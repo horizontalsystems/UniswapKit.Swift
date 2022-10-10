@@ -2,6 +2,7 @@ import Foundation
 import EvmKit
 import HsCryptoKit
 import BigInt
+import HsExtensions
 
 public struct Pair {
     let reserve0: TokenAmount
@@ -88,10 +89,10 @@ public struct Pair {
 extension Pair {
 
     static func address(token0: Token, token1: Token, factoryAddressString: String, initCodeHashString: String) -> Address {
-        let data = Data(hex: "ff")! +
-                Data(hex: factoryAddressString)! +
+        let data = "ff".hs.hexData! +
+                factoryAddressString.hs.hexData! +
                 Crypto.sha3(token0.address.raw + token1.address.raw) +
-                Data(hex: initCodeHashString)!
+                initCodeHashString.hs.hexData!
 
         return Address(raw: Crypto.sha3(data).suffix(20))
     }
