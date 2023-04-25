@@ -32,16 +32,20 @@ extension Kit {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func swapDataSingle(tokenIn: Token, tokenOut: Token) -> Single<SwapData> {
+    public func swapDataSingle(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
         let tokenPairs = pairSelector.tokenPairs(tokenA: tokenIn, tokenB: tokenOut)
 
-        let singles = tokenPairs.map { tokenA, tokenB in
-            tradeManager.pairSingle(tokenA: tokenA, tokenB: tokenB)
+        let pairs = try await withThrowingTaskGroup(of: Pair.self) { taskGroup in
+            tokenPairs.forEach { token, token2 in
+                taskGroup.addTask { try await self.tradeManager.pair(tokenA: token, tokenB: token2) }
+            }
+
+            return try await taskGroup.reduce(into: [Pair]()) { result, pair in
+                result.append(pair)
+            }
         }
 
-        return Single.zip(singles) { pairs in
-            SwapData(pairs: pairs, tokenIn: tokenIn, tokenOut: tokenOut)
-        }
+        return SwapData(pairs: pairs, tokenIn: tokenIn, tokenOut: tokenOut)
     }
 
     public func bestTradeExactIn(swapData: SwapData, amountIn: Decimal, options: TradeOptions = TradeOptions()) throws -> TradeData {

@@ -107,12 +107,10 @@ extension EthereumAdapter {
         evmKit.transactionsObservable(tagQueries: []).map { _ in () }
     }
 
-    func transactionsSingle(from hash: Data?, limit: Int?) -> Single<[TransactionRecord]> {
-        evmKit.transactionsSingle(tagQueries: [], fromHash: hash, limit: limit)
-                .map { [weak self] in
-                    $0.compactMap {
-                        self?.transactionRecord(fullTransaction: $0)
-                    }
+    func transactions(from hash: Data?, limit: Int?) -> [TransactionRecord] {
+        evmKit.transactions(tagQueries: [], fromHash: hash, limit: limit)
+                .map { transaction in
+                    transactionRecord(fullTransaction: transaction)
                 }
     }
 
@@ -120,35 +118,28 @@ extension EthereumAdapter {
         evmKit.transaction(hash: hash).map { transactionRecord(fullTransaction: $0) }
     }
 
-    func estimatedGasLimit(to address: Address, value: Decimal, gasPrice: GasPrice) -> Single<Int> {
+    func estimatedGasLimit(to address: Address, value: Decimal, gasPrice: GasPrice) async throws -> Int {
         let value = BigUInt(value.hs.roundedString(decimal: decimal))!
 
-        return evmKit.estimateGas(to: address, amount: value, gasPrice: gasPrice)
+        return try await evmKit.fetchEstimateGas(to: address, amount: value, gasPrice: gasPrice)
     }
 
-    func transactionSingle(hash: Data) -> Single<FullTransaction> {
-        evmKit.transactionSingle(hash: hash)
+    func transaction(hash: Data) async throws -> FullTransaction {
+        try await evmKit.fetchTransaction(hash: hash)
     }
 
-    func sendSingle(to: Address, amount: Decimal, gasLimit: Int, gasPrice: GasPrice) -> Single<Void> {
+    func sendSingle(to: Address, amount: Decimal, gasLimit: Int, gasPrice: GasPrice) async throws {
         guard let signer = signer else {
-            return Single.error(SendError.noSigner)
+            throw SendError.noSigner
         }
 
         let amount = BigUInt(amount.hs.roundedString(decimal: decimal))!
         let transactionData = evmKit.transferTransactionData(to: to, value: amount)
 
-        return evmKit.rawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
-                .flatMap { [weak self] rawTransaction in
-                    guard let strongSelf = self else {
-                        throw Kit.KitError.weakReference
-                    }
+        let rawTransaction = try await evmKit.fetchRawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
+        let signature = try signer.signature(rawTransaction: rawTransaction)
 
-                    let signature = try signer.signature(rawTransaction: rawTransaction)
-
-                    return strongSelf.evmKit.sendSingle(rawTransaction: rawTransaction, signature: signature)
-                }
-                .map { (tx: FullTransaction) in () }
+        _ = try await evmKit.send(rawTransaction: rawTransaction, signature: signature)
     }
 
 }

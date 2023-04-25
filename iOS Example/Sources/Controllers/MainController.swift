@@ -19,10 +19,10 @@ class MainController: UITabBarController {
         controllers.append(transactionsNavigation)
 
         if Manager.shared.signer != nil {
-            let sendNavigation = UINavigationController(rootViewController: SendController())
-            sendNavigation.tabBarItem.title = "Send"
-            sendNavigation.tabBarItem.image = UIImage(named: "Send Tab Bar Icon")
-            controllers.append(sendNavigation)
+            let swapNavigation = UINavigationController(rootViewController: SwapController())
+            swapNavigation.tabBarItem.title = "Swap"
+            swapNavigation.tabBarItem.image = UIImage(named: "Send Tab Bar Icon")
+            controllers.append(swapNavigation)
         }
 
         let receiveNavigation = UINavigationController(rootViewController: ReceiveController())

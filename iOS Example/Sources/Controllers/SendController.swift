@@ -152,15 +152,14 @@ class SendController: UIViewController {
 
         gasPriceLabel.text = "Loading..."
 
-        adapter.estimatedGasLimit(to: address, value: value, gasPrice: gasPrice)
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-                .observeOn(MainScheduler.instance)
-                .subscribe(onSuccess: { [weak self] gasLimit in
-                    self?.updateGasLimit(value: gasLimit)
-                }, onError: { [weak self] error in
-                    self?.updateGasLimit(value: nil)
-                })
-                .disposed(by: disposeBag)
+        Task {
+            do {
+                let gasLimit = try await adapter.estimatedGasLimit(to: address, value: value, gasPrice: gasPrice)
+                updateGasLimit(value: gasLimit)
+            } catch {
+                updateGasLimit(value: nil)
+            }
+        }
     }
 
     @objc private func send() {
@@ -179,18 +178,18 @@ class SendController: UIViewController {
             return
         }
 
-        adapter.sendSingle(to: address, amount: amount, gasLimit: estimateGasLimit, gasPrice: gasPrice)
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .userInitiated))
-                .observeOn(MainScheduler.instance)
-                .subscribe(onSuccess: { [weak self] _ in
-                    self?.addressTextField.text = ""
-                    self?.amountTextField.text = ""
+        Task {
+            do {
+                try await adapter.sendSingle(to: address, amount: amount, gasLimit: estimateGasLimit, gasPrice: gasPrice)
 
-                    self?.showSuccess(address: address, amount: amount)
-                }, onError: { [weak self] error in
-                    self?.show(error: "Send failed: \(error)")
-                })
-                .disposed(by: disposeBag)
+                addressTextField.text = ""
+                amountTextField.text = ""
+
+                showSuccess(address: address, amount: amount)
+            } catch {
+                show(error: "Send failed: \(error)")
+            }
+        }
     }
 
     private func handle(feeHistory: FeeHistory) {
