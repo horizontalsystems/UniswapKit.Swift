@@ -52,13 +52,7 @@ class TransactionsController: UITableViewController {
 
         loading = true
 
-        adapter.transactionsSingle(from: transactions.last?.transactionHashData, limit: limit)
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .utility))
-                .observeOn(MainScheduler.instance)
-                .subscribe(onSuccess: { [weak self] transactions in
-                    self?.onLoad(transactions: transactions)
-                })
-                .disposed(by: disposeBag)
+        onLoad(transactions: adapter.transactions(from: transactions.last?.transactionHashData, limit: limit))
     }
 
     private func onLoad(transactions: [TransactionRecord]) {

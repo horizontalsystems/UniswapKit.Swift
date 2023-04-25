@@ -90,32 +90,30 @@ class TradeManager {
 
 extension TradeManager {
 
-    func pairSingle(tokenA: Token, tokenB: Token) -> Single<Pair> {
+    func pair(tokenA: Token, tokenB: Token) async throws -> Pair {
         let (token0, token1) = tokenA.sortsBefore(token: tokenB) ? (tokenA, tokenB) : (tokenB, tokenA)
 
         let pairAddress = Pair.address(token0: token0, token1: token1, factoryAddressString: factoryAddressString, initCodeHashString: initCodeHashString)
 
 //        print("PAIR ADDRESS: \(pairAddress.toHexString())")
 
-        return evmKit.call(contractAddress: pairAddress, data: GetReservesMethod().encodedABI())
-                .map { data in
-//                    print("DATA: \(data.toHexString())")
+        let data = try await evmKit.fetchCall(contractAddress: pairAddress, data: GetReservesMethod().encodedABI())
+//        print("DATA: \(data.toHexString())")
 
-                    var rawReserve0: BigUInt = 0
-                    var rawReserve1: BigUInt = 0
+        var rawReserve0: BigUInt = 0
+        var rawReserve1: BigUInt = 0
 
-                    if data.count == 3 * 32 {
-                        rawReserve0 = BigUInt(data[0...31])
-                        rawReserve1 = BigUInt(data[32...63])
-                    }
+        if data.count == 3 * 32 {
+            rawReserve0 = BigUInt(data[0...31])
+            rawReserve1 = BigUInt(data[32...63])
+        }
 
-//                    print("Reserve0: \(reserve0), Reserve1: \(reserve1)")
+//        print("Reserve0: \(reserve0), Reserve1: \(reserve1)")
 
-                    let reserve0 = TokenAmount(token: token0, rawAmount: rawReserve0)
-                    let reserve1 = TokenAmount(token: token1, rawAmount: rawReserve1)
+        let reserve0 = TokenAmount(token: token0, rawAmount: rawReserve0)
+        let reserve1 = TokenAmount(token: token1, rawAmount: rawReserve1)
 
-                    return Pair(reserve0: reserve0, reserve1: reserve1)
-                }
+        return Pair(reserve0: reserve0, reserve1: reserve1)
     }
 
     func transactionData(tradeData: TradeData) throws -> TransactionData {
