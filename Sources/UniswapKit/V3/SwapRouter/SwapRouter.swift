@@ -4,7 +4,7 @@ import BigInt
 import RxSwift
 
 class SwapRouter {
-    let routerAddress = try! Address(hex: "0xE592427A0AEce92De3Edee1F18E0157C05861564") // for all supported
+    let routerAddress = try! Address(hex: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45") // for all supported  //0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45 // 0xE592427A0AEce92De3Edee1F18E0157C05861564
     private let evmKit: EvmKit.Kit
 
     init(evmKit: EvmKit.Kit) {

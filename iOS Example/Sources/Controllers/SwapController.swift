@@ -9,11 +9,12 @@ import Eip20Kit
 class SwapController: UIViewController {
     private var gasPrice = GasPrice.legacy(gasPrice: 50_000_000_000)
     private var disposeBag = DisposeBag()
+    private var estimatedCancellationTask: Task<Void, Never>?
     private var swapDataTask: Task<Void, Never>?
 
     private var tradeOptions = TradeOptions(allowedSlippage: 0.5)
-    private let fromToken = Configuration.shared.erc20Tokens[0]
-    private let toToken = Configuration.shared.erc20Tokens[1]
+    private var fromToken = Configuration.shared.erc20Tokens[0]
+    private var toToken = Configuration.shared.erc20Tokens[1]
     private var tradeType: TradeType = .exactIn {
         didSet {
             syncCoinLabels()
@@ -23,11 +24,10 @@ class SwapController: UIViewController {
     private var fee = KitV3.FeeAmount.lowest
 
     private let uniswapKit = try! UniswapKit.KitV3.instance(evmKit: Manager.shared.evmKit)
-    private let eip20Kit = try! Eip20Kit.Kit.instance(evmKit: Manager.shared.evmKit, contractAddress: Configuration.shared.erc20Tokens[0].contractAddress)
 
-    private let fromLabel = UILabel()
+    private let fromButton = UIButton()
     private let fromTextField = UITextField()
-    private let toLabel = UILabel()
+    private let toButton = UIButton()
     private let toTextField = UITextField()
     private let allowanceLabel = UILabel()
     private let maximumSoldLabel = UILabel()
@@ -46,21 +46,22 @@ class SwapController: UIViewController {
 
         title = "Swap"
 
-        view.addSubview(fromLabel)
-        fromLabel.snp.makeConstraints { make in
+        view.addSubview(fromButton)
+        fromButton.snp.makeConstraints { make in
             make.leading.equalToSuperview().inset(16)
             make.top.equalTo(view.safeAreaLayoutGuide).inset(16)
         }
 
-        fromLabel.font = .systemFont(ofSize: 14)
-        fromLabel.textColor = .gray
+        fromButton.setTitleColor(.systemBlue, for: .normal)
+        fromButton.titleLabel?.font = .systemFont(ofSize: 14)
+        fromButton.addTarget(self, action: #selector(onTapButton(_:)), for: .touchUpInside)
 
         let fromTextFieldWrapper = UIView()
 
         view.addSubview(fromTextFieldWrapper)
         fromTextFieldWrapper.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(16)
-            make.top.equalTo(fromLabel.snp.bottom).offset(8)
+            make.top.equalTo(fromButton.snp.bottom).offset(8)
         }
 
         fromTextFieldWrapper.borderWidth = 1
@@ -75,21 +76,22 @@ class SwapController: UIViewController {
         fromTextField.font = .systemFont(ofSize: 13)
         fromTextField.addTarget(self, action: #selector(textFieldDidChange(_:)), for: .editingChanged)
 
-        view.addSubview(toLabel)
-        toLabel.snp.makeConstraints { make in
+        view.addSubview(toButton)
+        toButton.snp.makeConstraints { make in
             make.leading.equalToSuperview().inset(16)
             make.top.equalTo(fromTextField.snp.bottom).offset(16)
         }
 
-        toLabel.font = .systemFont(ofSize: 14)
-        toLabel.textColor = .gray
+        toButton.setTitleColor(.systemBlue, for: .normal)
+        toButton.titleLabel?.font = .systemFont(ofSize: 14)
+        toButton.addTarget(self, action: #selector(onTapButton(_:)), for: .touchUpInside)
 
         let toTextFieldWrapper = UIView()
 
         view.addSubview(toTextFieldWrapper)
         toTextFieldWrapper.snp.makeConstraints { make in
             make.leading.trailing.equalToSuperview().inset(16)
-            make.top.equalTo(toLabel.snp.bottom).offset(8)
+            make.top.equalTo(toButton.snp.bottom).offset(8)
         }
 
         toTextFieldWrapper.borderWidth = 1
@@ -186,13 +188,54 @@ class SwapController: UIViewController {
         view.endEditing(true)
     }
 
+    @objc private func onTapButton(_ button: UIButton) {
+        let isFrom = button == fromButton
+
+        let viewController = TokenSelectController()
+        viewController.onSelect = { [weak self] token in
+            self?.syncToken(isFrom: isFrom, token: token)
+        }
+        present(UINavigationController(rootViewController: viewController), animated: true)
+    }
+
+    private func syncToken(isFrom: Bool, token: Erc20Token) {
+        if isFrom {
+            guard fromToken.code != token.code else {
+                return
+            }
+            let oldToken = fromToken
+
+            fromToken = token
+            if toToken.code == token.code {
+               toToken = oldToken
+            }
+        } else {
+            guard toToken.code != token.code else {
+                return
+            }
+            let oldToken = toToken
+
+            toToken = token
+            if fromToken.code == token.code {
+                fromToken = oldToken
+            }
+        }
+        syncCoinLabels()
+
+        let textField = tradeType == .exactIn ? fromTextField : toTextField
+        guard checkValidAmount(text: textField.text) else {
+            return
+        }
+
+        syncSwapData()
+    }
+
     private func syncCoinLabels() {
-        let estimatedLabel = tradeType == .exactIn ? toLabel : fromLabel
+        let fromText = "From: \(fromToken.code)" + (tradeType == .exactIn ? "" : " (estimated)")
+        let toText = "To: \(toToken.code)" + (tradeType == .exactOut ? "" : " (estimated)")
 
-        fromLabel.text = "From: \(fromToken.code)"
-        toLabel.text = "To: \(toToken.code)"
-
-        estimatedLabel.text = estimatedLabel.text.map { $0 + " (estimated)" }
+        fromButton.setTitle(fromText, for: .normal)
+        toButton.setTitle(toText, for: .normal)
     }
 
     private func sync(allowance: String?) {
@@ -203,7 +246,6 @@ class SwapController: UIViewController {
         print("Sync SwapData!")
 
         swapDataTask?.cancel()
-        swapDataTask = nil
         swapDataTask = Task { [weak self] in
             do {
                 let exactAmount: BigUInt
@@ -219,8 +261,8 @@ class SwapController: UIViewController {
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactIn(
-                            tokenIn: .erc20(address: fromToken.contractAddress, decimals: fromToken.decimals),
-                            tokenOut: .erc20(address: toToken.contractAddress, decimals: toToken.decimals),
+                            tokenIn: token(fromToken),
+                            tokenOut: token(toToken),
                             amountIn: amount
                     )
                 case .exactOut:
@@ -234,8 +276,8 @@ class SwapController: UIViewController {
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactOut(
-                            tokenIn: .erc20(address: fromToken.contractAddress, decimals: fromToken.decimals),
-                            tokenOut: .erc20(address: toToken.contractAddress, decimals: toToken.decimals),
+                            tokenIn: token(fromToken),
+                            tokenOut: token(toToken),
                             amountOut: amount
                     )
                 }
@@ -250,16 +292,21 @@ class SwapController: UIViewController {
     }
 
     @objc private func syncAllowance() {
-        eip20Kit.allowanceSingle(spenderAddress: uniswapKit.routerAddress)
-                .subscribeOn(ConcurrentDispatchQueueScheduler(qos: .utility))
-                .observeOn(MainScheduler.instance)
-                .subscribe(onSuccess: { [weak self] allowance in
-                    self?.sync(allowance: allowance)
-                }, onError: { [weak self] error in
-                    self?.sync(allowance: nil)
-                    self?.show(error: error.localizedDescription)
-                })
-                .disposed(by: disposeBag)
+        let token = token(fromToken)
+        if token.isEther {
+            sync(allowance: nil)
+            return
+        }
+        Task {
+            do {
+                let eip20Kit = try Eip20Kit.Kit.instance(evmKit: Manager.shared.evmKit, contractAddress: token.address)
+                let allowance = try await eip20Kit.allowance(spenderAddress: uniswapKit.routerAddress)
+                sync(allowance: allowance)
+            } catch {
+                sync(allowance: nil)
+                show(error: error.localizedDescription)
+            }
+        }
     }
 
     @objc private func approve() {
@@ -269,32 +316,30 @@ class SwapController: UIViewController {
             return
         }
 
+        guard let eip20Kit = try? Eip20Kit.Kit.instance(evmKit: Manager.shared.evmKit, contractAddress: token(fromToken).address) else {
+            show(error: "Can't create Eip20 Kit for token!")
+            return
+        }
         let transactionData = eip20Kit.approveTransactionData(spenderAddress: uniswapKit.routerAddress, amount: amountIn)
 
         let gasPrice = gasPrice
 
         disposeBag = DisposeBag()
-        Manager.shared.evmKit
-                .estimateGas(transactionData: transactionData, gasPrice: gasPrice)
-                .subscribeOn(MainScheduler.instance)
-                .flatMap { gasLimit in
-                    print("GasLimit = \(gasLimit)")
-                    return Manager.shared.evmKit.rawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
-                }
-                .flatMap { raw in
-                    do {
-                        let signature = try Manager.shared.signer.signature(rawTransaction: raw)
-                        return Manager.shared.evmKit.sendSingle(rawTransaction: raw, signature: signature)
-                    } catch {
-                        return .error(error)
-                    }
-                }
-                .subscribe(onSuccess: { [weak self] fullTransaction in
-                    self?.showSuccess(message: "Approve \(amountString) \(self?.fromToken.code ?? "Tokens")")
-                }, onError: { [weak self] error in
-                    self?.show(error: error.localizedDescription)
-                })
-                .disposed(by: disposeBag)
+        estimatedCancellationTask?.cancel()
+        estimatedCancellationTask = Task { [weak self] in
+            do {
+                let gasLimit = try await Manager.shared.evmKit.fetchEstimateGas(transactionData: transactionData, gasPrice: gasPrice)
+                print("GasLimit = \(gasLimit)")
+                let raw = try await Manager.shared.evmKit.fetchRawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
+
+                let signature = try Manager.shared.signer.signature(rawTransaction: raw)
+                let _ = try await Manager.shared.evmKit.send(rawTransaction: raw, signature: signature)
+
+                self?.showSuccess(message: "Approve \(amountString) \(self?.fromToken.code ?? "Tokens")")
+            } catch {
+                self?.show(error: error.localizedDescription)
+            }
+        }
     }
 
 
@@ -329,30 +374,22 @@ class SwapController: UIViewController {
                     amountOut: amountOut,
                     tradeOptions: tradeOptions)
 
+            print("tx input: " , transactionData.input.hs.hexString)
             let gasPrice = gasPrice
+            Task { [weak self] in
+                do {
+                    let gasLimit = try await Manager.shared.evmKit.fetchEstimateGas(transactionData: transactionData, gasPrice: gasPrice)
+                    print("GasLimit = \(gasLimit)")
+                    let raw = try await Manager.shared.evmKit.fetchRawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
 
-            disposeBag = DisposeBag()
-            Manager.shared.evmKit
-                    .estimateGas(transactionData: transactionData, gasPrice: gasPrice)
-                    .subscribeOn(MainScheduler.instance)
-                    .flatMap { gasLimit in
-                        print("GasLimit = \(gasLimit)")
-                        return Manager.shared.evmKit.rawTransaction(transactionData: transactionData, gasPrice: gasPrice, gasLimit: gasLimit)
-                    }
-                    .flatMap { raw in
-                        do {
-                            let signature = try Manager.shared.signer.signature(rawTransaction: raw)
-                            return Manager.shared.evmKit.sendSingle(rawTransaction: raw, signature: signature)
-                        } catch {
-                            return .error(error)
-                        }
-                    }
-                    .subscribe(onSuccess: { [weak self] fullTransaction in
-                        self?.showSuccess(amountIn: amountIn, amountOut: amountOut)
-                    }, onError: { [weak self] error in
-                        self?.show(error: error.localizedDescription)
-                    })
-                    .disposed(by: disposeBag)
+                    let signature = try Manager.shared.signer.signature(rawTransaction: raw)
+                    let _ = try await Manager.shared.evmKit.send(rawTransaction: raw, signature: signature)
+
+                    self?.showSuccess(message: "Send successful! \(amountIn.description) \(amountOut.description)")
+                } catch {
+                    self?.show(error: error.localizedDescription)
+                }
+            }
         } catch {
             show(error: error.localizedDescription)
         }
@@ -380,6 +417,17 @@ class SwapController: UIViewController {
         present(alert, animated: true)
     }
 
+    private func checkValidAmount(text: String?) -> Bool {
+        let text = text ?? ""
+        if text.isEmpty {
+            return false
+        }
+        if let decimalValue = Decimal(string: text), !decimalValue.isZero {
+            return true
+        }
+        return false
+    }
+
 }
 
 extension SwapController {
@@ -393,7 +441,7 @@ extension SwapController {
             tradeType = newTradeType
         }
 
-        if textField.text?.isEmpty ?? false {
+        if !checkValidAmount(text: textField.text) {
             switch newTradeType {
             case .exactIn: toTextField.text = ""
             case .exactOut: fromTextField.text = ""
@@ -407,6 +455,14 @@ extension SwapController {
 }
 
 extension SwapController {
+
+    func token(_ erc20Token: Erc20Token) -> Token {
+        guard let contractAddress = erc20Token.contractAddress else {
+            return uniswapKit.etherToken
+        }
+
+        return .erc20(address: contractAddress, decimals: erc20Token.decimals)
+    }
 
     enum State {
         case idle
