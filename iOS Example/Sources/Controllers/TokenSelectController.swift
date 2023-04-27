@@ -1,10 +1,7 @@
 import UIKit
 import UIExtensions
-import RxSwift
 
 class TokenSelectController: UITableViewController {
-    private let disposeBag = DisposeBag()
-
     var onSelect: ((Erc20Token) -> ())?
 
     override func viewDidLoad() {

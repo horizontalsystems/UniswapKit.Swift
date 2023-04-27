@@ -1,11 +1,8 @@
 import Foundation
-import RxSwift
 import EvmKit
 import BigInt
 
 public class Kit {
-    private let disposeBag = DisposeBag()
-
     private let tradeManager: TradeManager
     private let pairSelector: PairSelector
     private let tokenFactory: TokenFactory
@@ -32,7 +29,7 @@ extension Kit {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func swapDataSingle(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
+    public func swapData(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
         let tokenPairs = pairSelector.tokenPairs(tokenA: tokenIn, tokenB: tokenOut)
 
         let pairs = try await withThrowingTaskGroup(of: Pair.self) { taskGroup in
