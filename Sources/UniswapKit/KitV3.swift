@@ -1,11 +1,8 @@
 import Foundation
-import RxSwift
 import EvmKit
 import BigInt
 
 public class KitV3 {
-    private let disposeBag = DisposeBag()
-
     private let evmKit: EvmKit.Kit
     private let quoter: Quoter
     private let swapRouter: SwapRouter

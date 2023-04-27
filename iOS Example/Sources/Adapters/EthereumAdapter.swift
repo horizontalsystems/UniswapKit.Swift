@@ -1,6 +1,6 @@
 import Foundation
 import EvmKit
-import RxSwift
+import Combine
 import BigInt
 
 class EthereumAdapter {
@@ -87,24 +87,24 @@ extension EthereumAdapter {
         evmKit.receiveAddress
     }
 
-    var lastBlockHeightObservable: Observable<Void> {
-        evmKit.lastBlockHeightObservable.map { _ in () }
+    var lastBlockHeightPublisher: AnyPublisher<Void, Never> {
+        evmKit.lastBlockHeightPublisher.map { _ in () }.eraseToAnyPublisher()
     }
 
-    var syncStateObservable: Observable<Void> {
-        evmKit.syncStateObservable.map { _ in () }
+    var syncStatePublisher: AnyPublisher<Void, Never> {
+        evmKit.syncStatePublisher.map { _ in () }.eraseToAnyPublisher()
     }
 
-    var transactionsSyncStateObservable: Observable<Void> {
-        evmKit.transactionsSyncStateObservable.map { _ in () }
+    var transactionsSyncStatePublisher: AnyPublisher<Void, Never> {
+        evmKit.transactionsSyncStatePublisher.map { _ in () }.eraseToAnyPublisher()
     }
 
-    var balanceObservable: Observable<Void> {
-        evmKit.accountStateObservable.map { _ in () }
+    var balancePublisher: AnyPublisher<Void, Never> {
+        evmKit.accountStatePublisher.map { _ in () }.eraseToAnyPublisher()
     }
 
-    var transactionsObservable: Observable<Void> {
-        evmKit.transactionsObservable(tagQueries: []).map { _ in () }
+    var transactionsPublisher: AnyPublisher<Void, Never> {
+        evmKit.transactionsPublisher(tagQueries: []).map { _ in () }.eraseToAnyPublisher()
     }
 
     func transactions(from hash: Data?, limit: Int?) -> [TransactionRecord] {

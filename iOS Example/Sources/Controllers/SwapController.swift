@@ -1,14 +1,12 @@
 import UIKit
 import SnapKit
 import EvmKit
-import RxSwift
 import UniswapKit
 import BigInt
 import Eip20Kit
 
 class SwapController: UIViewController {
     private var gasPrice = GasPrice.legacy(gasPrice: 50_000_000_000)
-    private var disposeBag = DisposeBag()
     private var estimatedCancellationTask: Task<Void, Never>?
     private var swapDataTask: Task<Void, Never>?
 
@@ -324,7 +322,6 @@ class SwapController: UIViewController {
 
         let gasPrice = gasPrice
 
-        disposeBag = DisposeBag()
         estimatedCancellationTask?.cancel()
         estimatedCancellationTask = Task { [weak self] in
             do {

@@ -1,7 +1,6 @@
 import Foundation
 import EvmKit
 import BigInt
-import RxSwift
 
 public class Quoter {
     private let quoterAddress = try! Address(hex: "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6") // for all supported

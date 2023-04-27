@@ -1,14 +1,14 @@
+import Combine
 import UIKit
 import SnapKit
 import EvmKit
-import RxSwift
 
 class SendController: UIViewController {
     private let adapter: EthereumAdapter = Manager.shared.adapter
     private let feeHistoryProvider = EIP1559GasPriceProvider(evmKit: Manager.shared.evmKit)
     private var gasPrice = GasPrice.legacy(gasPrice: 50_000_000_000)
     private var estimateGasLimit: Int?
-    private let disposeBag = DisposeBag()
+    private var cancellables = Set<AnyCancellable>()
 
     private let addressTextField = UITextField()
     private let amountTextField = UITextField()
@@ -116,13 +116,17 @@ class SendController: UIViewController {
         sendButton.setTitle("Send", for: .normal)
         sendButton.addTarget(self, action: #selector(send), for: .touchUpInside)
 
-        feeHistoryProvider.feeHistoryObservable(blocksCount: 2, rewardPercentile: [50])
-                .subscribe(onNext: { [weak self] history in
+        feeHistoryProvider.feeHistoryPublisher(blocksCount: 2, rewardPercentile: [50])
+                .receive(on: DispatchQueue.main)
+                .sink(receiveCompletion: { completion in
+                    switch completion {
+                    case .failure(let error): print("FeeHistoryError: \(error)")
+                    case .finished: ()
+                    }
+                }, receiveValue: { [weak self] history in
                     self?.handle(feeHistory: history)
-                }, onError: { error in
-                    print("FeeHistoryError: \(error)")
                 })
-                .disposed(by: disposeBag)
+                .store(in: &cancellables)
 
         addressTextField.addTarget(self, action: #selector(updateEstimatedGasPrice), for: .editingChanged)
         amountTextField.addTarget(self, action: #selector(updateEstimatedGasPrice), for: .editingChanged)
