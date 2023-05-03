@@ -3,18 +3,16 @@ import EvmKit
 import BigInt
 
 class ExactOutputMethod: ContractMethod {
-    static let methodSignature = "exactOutput((bytes,address,uint256,uint256,uint256))"
+    static let methodSignature = "exactOutput((bytes,address,uint256,uint256))"
 
-    let path: SwapPath
+    let path: Data
     let recipient: Address
-    let deadline: BigUInt
     let amountOut: BigUInt
     let amountInMaximum: BigUInt
 
-    init(path: SwapPath, recipient: Address, deadline: BigUInt, amountOut: BigUInt, amountInMaximum: BigUInt) {
+    init(path: Data, recipient: Address, amountOut: BigUInt, amountInMaximum: BigUInt) {
         self.path = path
         self.recipient = recipient
-        self.deadline = deadline
         self.amountOut = amountOut
         self.amountInMaximum = amountInMaximum
 
@@ -24,7 +22,19 @@ class ExactOutputMethod: ContractMethod {
     override var methodSignature: String { ExactOutputMethod.methodSignature }
 
     override var arguments: [Any] {
-        [ContractMethodHelper.DynamicStructParameter([path, recipient, deadline, amountOut, amountInMaximum])]
+        [ContractMethodHelper.DynamicStructParameter([path, recipient, amountOut, amountInMaximum])]
+    }
+
+}
+
+extension ExactOutputMethod {
+
+    var tokenIn: Address {
+        Address(raw: path.suffix(20))
+    }
+
+    var tokenOut: Address {
+        Address(raw: path.prefix(20))
     }
 
 }

@@ -1,6 +1,8 @@
 import Foundation
 import EvmKit
 import HdWalletKit
+import UniswapKit
+import Eip20Kit
 
 class Manager {
     static let shared = Manager()
@@ -8,7 +10,7 @@ class Manager {
     private let keyWords = "mnemonic_words"
     private let keyAddress = "address"
 
-    var evmKit: Kit!
+    var evmKit: EvmKit.Kit!
     var signer: Signer!
     var adapter: EthereumAdapter!
 
@@ -29,6 +31,10 @@ class Manager {
                 walletId: "walletId",
                 minLogLevel: configuration.minLogLevel
         )
+
+        Eip20Kit.Kit.addDecorators(to: evmKit)
+        UniswapKit.Kit.addDecorators(to: evmKit)
+        try KitV3.addDecorators(to: evmKit)
 
         adapter = EthereumAdapter(evmKit: evmKit, signer: signer)
 
@@ -98,14 +104,14 @@ class Manager {
 extension Manager {
 
     func login(words: [String]) throws {
-        try Kit.clear(exceptFor: ["walletId"])
+        try Kit.clear(exceptFor: [])
 
         save(words: words)
         try initKit(words: words)
     }
 
     func watch(address: Address) throws {
-        try Kit.clear(exceptFor: ["walletId"])
+        try Kit.clear(exceptFor: [])
 
         save(address: address.hex)
         try initKit(address: address)

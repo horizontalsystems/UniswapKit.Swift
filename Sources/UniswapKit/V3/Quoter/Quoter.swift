@@ -34,8 +34,8 @@ public class Quoter {
         return BigUInt(data[0...31])
     }
 
-    private func quote(swapPath: SwapPath, amount: BigUInt) async throws -> BigUInt {
-        let method = swapPath.tradeType == .exactIn ?
+    private func quote(swapPath: SwapPath, tradeType: TradeType, amount: BigUInt) async throws -> BigUInt {
+        let method = tradeType == .exactIn ?
                 QuoteExactInputMethod(swapPath: swapPath, amountIn: amount) :
                 QuoteExactOutputMethod(swapPath: swapPath, amountOut: amount)
 
@@ -47,7 +47,7 @@ public class Quoter {
         return BigUInt(data[0...31])
     }
 
-    private func bestTradeExact(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt, fees: [KitV3.FeeAmount] = KitV3.FeeAmount.allCases, index: Int = 0) async throws -> BestTrade {
+    private func bestTradeExact(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt, fees: [KitV3.FeeAmount] = KitV3.FeeAmount.allCases) async throws -> (fee: KitV3.FeeAmount, amount: BigUInt) {
         // check all fees and found the best amount for trade.
         var bestTrade: (fee: KitV3.FeeAmount, amount: BigUInt)?
         for fee in fees {
@@ -73,42 +73,61 @@ public class Quoter {
             throw KitV3.TradeError.tradeNotFound
         }
 
-        let swapPath = SwapPath(tradeType: tradeType, tokenIn: tokenIn, tokenOut: tokenOut, fee: bestTrade.fee)
-        return BestTrade(swapPath: swapPath, amount: bestTrade.amount)
+        return bestTrade
     }
 
-    private func bestTradeMultihop(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> BestTrade {
+    private func bestTradeSingleIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeDataV3 {
+        let bestTradeOut = try await bestTradeExact(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
+
+        let swapPath = SwapPath([SwapPathItem(token1: tokenIn.address, token2: tokenOut.address, fee: bestTradeOut.fee)])
+        return TradeDataV3(tradeType: .exactIn, swapPath: swapPath, amountIn: amountIn, amountOut: bestTradeOut.amount, tokenIn: tokenIn, tokenOut: tokenOut)
+    }
+
+    private func bestTradeSingleOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeDataV3 {
+        let bestTradeIn = try await bestTradeExact(tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
+
+        let swapPath = SwapPath([SwapPathItem(token1: tokenOut.address, token2: tokenIn.address, fee: bestTradeIn.fee)])
+        return TradeDataV3(tradeType: .exactOut, swapPath: swapPath, amountIn: bestTradeIn.amount, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut)
+    }
+
+    private func bestTradeMultihopIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeDataV3 {
         let weth = tokenFactory.etherToken
 
-        let tokens = [tokenIn, weth, tokenOut]
+        let trade1 = try await bestTradeSingleIn(tokenIn: tokenIn, tokenOut: weth, amountIn: amountIn)
+        let trade2 = try await bestTradeSingleIn(tokenIn: weth, tokenOut: tokenOut, amountIn: trade1.tokenAmountOut.rawAmount)
 
-        // we get path by pairs. for exactIn it must be A->B, B->C, C->D, but for exactOut opposite: C->D, B->C, A->B
-        let pair: (_ index: Int) -> (`in`: Token, out: Token) = { index in
-            let firstIndex = tradeType == .exactIn ? index : (tokens.count - index - 2)
-            return (tokens[firstIndex], tokens[firstIndex + 1])
-        }
+        let path = SwapPath(trade1.swapPath.items + trade2.swapPath.items)
+        let amountOut = try await quote(swapPath: path, tradeType: .exactIn, amount: amountIn)
 
-        let bestTradeIn = try await bestTradeExact(tradeType: tradeType, tokenIn: pair(0).in, tokenOut: pair(0).out, amount: amount)
-        let bestTradeOut = try await bestTradeExact(tradeType: tradeType, tokenIn: pair(1).in, tokenOut: pair(1).out, amount: bestTradeIn.amount)
-
-        let path = try SwapPath(tradeType: tradeType, items: bestTradeIn.swapPath.items + bestTradeOut.swapPath.items)
-        let amount = try await quote(swapPath: path, amount: amount)
-
-        return BestTrade(swapPath: path, amount: amount)
+        return TradeDataV3(tradeType: .exactIn, swapPath: path, amountIn: amountIn, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut)
     }
 
-    func bestTrade(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> BestTrade {
+    private func bestTradeMultihopOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeDataV3 {
+        let weth = tokenFactory.etherToken
+
+        let trade1 = try await bestTradeSingleOut(tokenIn: weth, tokenOut: tokenOut, amountOut: amountOut)
+        let trade2 = try await bestTradeSingleOut(tokenIn: tokenIn, tokenOut: weth, amountOut: trade1.tokenAmountIn.rawAmount)
+
+        let path = SwapPath(trade1.swapPath.items + trade2.swapPath.items)
+        let amountIn = try await quote(swapPath: path, tradeType: .exactOut, amount: amountOut)
+
+        return TradeDataV3(tradeType: .exactIn, swapPath: path, amountIn: amountIn, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut)
+    }
+
+    func bestTrade(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> TradeDataV3 {
         do {
-            let trade = try await bestTradeExact(tradeType: tradeType, tokenIn: tokenIn, tokenOut: tokenOut, amount: amount)
-            print("New exact trade: \(trade)")
-            return trade
+            switch tradeType {
+            case .exactIn: return try await bestTradeSingleIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
+            case .exactOut: return try await bestTradeSingleOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
+            }
         } catch {
             print("error! \(error)")
         }
         do {
-            let trade = try await bestTradeMultihop(tradeType: tradeType, tokenIn: tokenIn, tokenOut: tokenOut, amount: amount)
-            print("New trade: \(trade)")
-            return trade
+            switch tradeType {
+            case .exactIn: return try await bestTradeMultihopIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
+            case .exactOut: return try await bestTradeMultihopOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
+            }
         } catch {
             print("error! \(error)")
         }
@@ -117,12 +136,10 @@ public class Quoter {
 
 
     private func call(data: Data) async throws -> Data {
-        print("call : \(Task.isCancelled)")
         do {
             let a = try await evmKit.fetchCall(contractAddress: quoterAddress, data: data)
             return a
         } catch {
-            print("Call Error: \(error)")
             throw error
         }
     }
@@ -131,21 +148,12 @@ public class Quoter {
 
 extension Quoter {
 
-    func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> BestTrade {
+    func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeDataV3 {
         try await bestTrade(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
     }
 
-    func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> BestTrade {
+    func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeDataV3 {
         try await bestTrade(tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
-    }
-
-}
-
-extension Quoter {
-
-    public struct BestTrade {
-        public let swapPath: SwapPath
-        public let amount: BigUInt
     }
 
 }
