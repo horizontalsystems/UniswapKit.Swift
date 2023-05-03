@@ -11,56 +11,48 @@ class SwapRouter {
     }
 
     private func buildMethodForExact(
-            swapPath: SwapPath,
-            recipient: Address,
-            deadline: BigUInt,
-            amountIn: BigUInt,
-            amountOut: BigUInt,
-            sqrtPriceLimitX96: BigUInt
+            bestTrade: TradeDataV3,
+            recipient: Address
     ) -> ContractMethod {
-        if swapPath.isSingle {
-            switch swapPath.tradeType {
+        if bestTrade.swapPath.isSingle {
+            switch bestTrade.tradeType {
             case .exactIn:
                 return ExactInputSingleMethod(
-                        tokenIn: swapPath.tokenIn.address,
-                        tokenOut: swapPath.tokenOut.address,
-                        fee: swapPath.firstFeeAmount.rawValue,
+                    tokenIn: bestTrade.tokenAmountIn.token.address,
+                        tokenOut: bestTrade.tokenAmountOut.token.address,
+                        fee: bestTrade.swapPath.firstFeeAmount.rawValue,
                         recipient: recipient,
-                        deadline: deadline,
-                        amountIn: amountIn,
-                        amountOutMinimum: amountOut,
-                        sqrtPriceLimitX96: sqrtPriceLimitX96
+                        amountIn: bestTrade.tokenAmountIn.rawAmount,
+                        amountOutMinimum: bestTrade.tokenAmountOut.rawAmount,
+                        sqrtPriceLimitX96: 0
                 )
             case .exactOut:
                 return ExactOutputSingleMethod(
-                        tokenIn: swapPath.tokenIn.address,
-                        tokenOut: swapPath.tokenOut.address,
-                        fee: swapPath.firstFeeAmount.rawValue,
+                        tokenIn: bestTrade.tokenAmountIn.token.address,
+                        tokenOut: bestTrade.tokenAmountOut.token.address,
+                        fee: bestTrade.swapPath.firstFeeAmount.rawValue,
                         recipient: recipient,
-                        deadline: deadline,
-                        amountOut: amountOut,
-                        amountInMaximum: amountIn,
-                        sqrtPriceLimitX96: sqrtPriceLimitX96
+                        amountOut: bestTrade.tokenAmountOut.rawAmount,
+                        amountInMaximum: bestTrade.tokenAmountIn.rawAmount,
+                        sqrtPriceLimitX96: 0
                 )
             }
         }
 
-        switch swapPath.tradeType {
+        switch bestTrade.tradeType {
         case .exactIn:
             return ExactInputMethod(
-                    path: swapPath,
+                    path: bestTrade.swapPath.abiEncodePacked,
                     recipient: recipient,
-                    deadline: deadline,
-                    amountIn: amountIn,
-                    amountOutMinimum: amountOut
+                    amountIn: bestTrade.tokenAmountIn.rawAmount,
+                    amountOutMinimum: bestTrade.tokenAmountOut.rawAmount
             )
         case .exactOut:
             return ExactOutputMethod(
-                    path: swapPath,
+                    path: bestTrade.swapPath.abiEncodePacked,
                     recipient: recipient,
-                    deadline: deadline,
-                    amountOut: amountOut,
-                    amountInMaximum: amountIn
+                    amountOut: bestTrade.tokenAmountOut.rawAmount,
+                    amountInMaximum: bestTrade.tokenAmountIn.rawAmount
             )
         }
     }
@@ -70,34 +62,29 @@ class SwapRouter {
 extension SwapRouter {
 
     func transactionData(
-            swapPath: SwapPath,
-            amountIn: BigUInt,
-            amountOut: BigUInt,
+            bestTrade: TradeDataV3,
             tradeOptions: TradeOptions
     ) -> TransactionData {
         let recipient = tradeOptions.recipient ?? evmKit.receiveAddress
-        let deadline = BigUInt(Date().timeIntervalSince1970 + tradeOptions.ttl)
+//        let deadline = BigUInt(Date().timeIntervalSince1970 + tradeOptions.ttl)
 
         // if you try to swap erc20 -> ETH, recipient will be zeros.
-        let swapRecipient = swapPath.tokenOut.isEther ? (try! Address(hex: "0x0000000000000000000000000000000000000000")) : recipient
-        let ethValue = swapPath.tokenIn.isEther ? amountIn : 0
+        let swapRecipient = bestTrade.tokenAmountOut.token.isEther ? (try! Address(hex: "0x0000000000000000000000000000000000000000")) : recipient
+        let ethValue = bestTrade.tokenAmountIn.token.isEther ? bestTrade.tokenAmountIn.rawAmount : 0
 
-        let swapMethod =  buildMethodForExact(
-                swapPath: swapPath,
-                recipient: swapRecipient,
-                deadline: deadline,
-                amountIn: amountIn,
-                amountOut: amountOut,
-                sqrtPriceLimitX96: 0)
+        let swapMethod = buildMethodForExact(
+                bestTrade: bestTrade,
+                recipient: swapRecipient
+        )
 
         var methods = [ContractMethod]()
         methods.append(swapMethod)
 
-        if swapPath.tokenIn.isEther && swapPath.tradeType == .exactOut {
+        if bestTrade.tokenAmountIn.token.isEther && bestTrade.tradeType == .exactOut {
             methods.append(RefundEthMethod())
         }
-        if swapPath.tokenOut.isEther {
-            methods.append(UnwrapWeth9Method(amountMinimum: amountOut, recipient: recipient))
+        if bestTrade.tokenAmountOut.token.isEther {
+            methods.append(UnwrapWeth9Method(amountMinimum: bestTrade.tokenAmountOut.rawAmount, recipient: recipient))
         }
 
         let resultMethod = (methods.count > 1) ? MulticallMethod(methods: methods) : swapMethod

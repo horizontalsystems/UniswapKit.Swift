@@ -6,7 +6,7 @@ import BigInt
 import Eip20Kit
 
 class SwapController: UIViewController {
-    private var gasPrice = GasPrice.legacy(gasPrice: 50_000_000_000)
+    private var gasPrice = GasPrice.legacy(gasPrice: 1_000_000_000)
     private var estimatedCancellationTask: Task<Void, Never>?
     private var swapDataTask: Task<Void, Never>?
 
@@ -247,7 +247,7 @@ class SwapController: UIViewController {
         swapDataTask = Task { [weak self] in
             do {
                 let exactAmount: BigUInt
-                let bestTrade: Quoter.BestTrade
+                let bestTrade: TradeDataV3
                 switch tradeType {
                 case .exactIn:
                     guard let amountString = fromTextField.text, let amount = Decimal(string: amountString),
@@ -340,26 +340,19 @@ class SwapController: UIViewController {
     }
 
 
-    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: Quoter.BestTrade) {
-        let decimal = tradeType == .exactIn ? toToken.decimals : fromToken.decimals
-        guard let significand = Decimal(string: bestTrade.amount.description) else {
-            print("Can't parse value: \(bestTrade.amount.description)")
-            return
-        }
+    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeDataV3) {
+        let estimatedAmount = tradeType == .exactIn ? bestTrade.tradeAmountOut : bestTrade.tradeAmountIn
 
-        let amount = Decimal(sign: .plus, exponent: -decimal, significand: significand)
         switch tradeType {
-        case .exactIn: toTextField.text = amount.description
-        case .exactOut: fromTextField.text = amount.description
+        case .exactIn: toTextField.text = estimatedAmount?.description
+        case .exactOut: fromTextField.text = estimatedAmount?.description
         }
 
-        let amountIn = tradeType == .exactIn ? exact : bestTrade.amount
-        let amountOut = tradeType == .exactOut ? exact : bestTrade.amount
-        state = .success(amountIn: amountIn, amountOut: amountOut, bestTrade: bestTrade)
+        state = .success(bestTrade: bestTrade)
     }
 
     @objc private func swap() {
-        guard case let .success(amountIn, amountOut, bestTrade) = state else {
+        guard case let .success(bestTrade) = state else {
             show(error: "Wrong swap data")
             return
         }
@@ -367,8 +360,6 @@ class SwapController: UIViewController {
         do {
             let transactionData = try uniswapKit.transactionData(
                     bestTrade: bestTrade,
-                    amountIn: amountIn,
-                    amountOut: amountOut,
                     tradeOptions: tradeOptions)
 
             print("tx input: " , transactionData.input.hs.hexString)
@@ -382,7 +373,7 @@ class SwapController: UIViewController {
                     let signature = try Manager.shared.signer.signature(rawTransaction: raw)
                     let _ = try await Manager.shared.evmKit.send(rawTransaction: raw, signature: signature)
 
-                    self?.showSuccess(message: "Send successful! \(amountIn.description) \(amountOut.description)")
+                    self?.showSuccess(message: "Send successful! \(bestTrade.tradeAmountIn?.description) \(bestTrade.tradeAmountOut?.description)")
                 } catch {
                     self?.show(error: error.localizedDescription)
                 }
@@ -463,7 +454,7 @@ extension SwapController {
 
     enum State {
         case idle
-        case success(amountIn: BigUInt, amountOut: BigUInt, bestTrade: Quoter.BestTrade)
+        case success(bestTrade: TradeDataV3)
     }
 
 }

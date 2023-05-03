@@ -9,9 +9,9 @@ public class SwapDecoration: TransactionDecoration {
     public let tokenIn: Token
     public let tokenOut: Token
     public let recipient: Address?
-    public let deadline: BigUInt
+    public let deadline: BigUInt?
 
-    public init(contractAddress: Address, amountIn: Amount, amountOut: Amount, tokenIn: Token, tokenOut: Token, recipient: Address?, deadline: BigUInt) {
+    public init(contractAddress: Address, amountIn: Amount, amountOut: Amount, tokenIn: Token, tokenOut: Token, recipient: Address?, deadline: BigUInt?) {
         self.contractAddress = contractAddress
         self.amountIn = amountIn
         self.amountOut = amountOut

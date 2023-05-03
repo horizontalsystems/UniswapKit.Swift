@@ -31,7 +31,7 @@ extension KitV3 {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal) async throws -> Quoter.BestTrade {
+    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal) async throws -> TradeDataV3 {
         guard let amountIn = BigUInt(amountIn.hs.roundedString(decimal: tokenIn.decimals)), !amountIn.isZero else {
             throw TradeError.zeroAmount
         }
@@ -39,7 +39,7 @@ extension KitV3 {
         return try await quoter.bestTradeExactIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amountIn)
     }
 
-    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal) async throws -> Quoter.BestTrade {
+    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal) async throws -> TradeDataV3 {
         guard let amountOut = BigUInt(amountOut.hs.roundedString(decimal: tokenOut.decimals)), !amountOut.isZero else {
             throw TradeError.zeroAmount
         }
@@ -47,8 +47,8 @@ extension KitV3 {
         return try await quoter.bestTradeExactOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amountOut)
     }
 
-    public func transactionData(bestTrade: Quoter.BestTrade, amountIn: BigUInt, amountOut: BigUInt, tradeOptions: TradeOptions) throws -> TransactionData {
-        swapRouter.transactionData(swapPath: bestTrade.swapPath, amountIn: amountIn, amountOut: amountOut, tradeOptions: tradeOptions)
+    public func transactionData(bestTrade: TradeDataV3, tradeOptions: TradeOptions) throws -> TransactionData {
+        swapRouter.transactionData(bestTrade: bestTrade, tradeOptions: tradeOptions)
     }
 
 }
@@ -68,9 +68,10 @@ extension KitV3 {
         return uniswapKit
     }
 
-    public static func addDecorators(to evmKit: EvmKit.Kit) {
-        evmKit.add(methodDecorator: SwapMethodDecorator(contractMethodFactories: SwapContractMethodFactories.shared))
-        evmKit.add(transactionDecorator: SwapTransactionDecorator())
+    public static func addDecorators(to evmKit: EvmKit.Kit) throws {
+        let tokenFactory = try TokenFactory(chain: evmKit.chain)
+        evmKit.add(methodDecorator: SwapV3MethodDecorator(contractMethodFactories: SwapV3ContractMethodFactories.shared))
+        evmKit.add(transactionDecorator: SwapV3TransactionDecorator(wethAddress: tokenFactory.etherToken.address))
     }
 
     public static func isSupported(chain: Chain) -> Bool {
