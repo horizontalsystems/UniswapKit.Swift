@@ -80,6 +80,16 @@ extension Fraction {
         )
     }
 
+    public static func *(lhs: Fraction, rhs: BigInt) -> Fraction {
+        let uint = BigUInt(abs(rhs))
+        let positive = rhs >= 0
+
+        return Fraction(
+                numerator: lhs.numerator * (positive ? uint : 1),
+                denominator: lhs.denominator * (positive ? 1 : uint)
+        )
+    }
+
     public static func /(lhs: Fraction, rhs: Fraction) -> Fraction {
         Fraction(
                 numerator: lhs.numerator * rhs.denominator,
