@@ -31,7 +31,7 @@ extension KitV3 {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal) async throws -> TradeDataV3 {
+    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal) async throws -> TradeV3 {
         guard let amountIn = BigUInt(amountIn.hs.roundedString(decimal: tokenIn.decimals)), !amountIn.isZero else {
             throw TradeError.zeroAmount
         }
@@ -39,7 +39,7 @@ extension KitV3 {
         return try await quoter.bestTradeExactIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amountIn)
     }
 
-    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal) async throws -> TradeDataV3 {
+    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal) async throws -> TradeV3 {
         guard let amountOut = BigUInt(amountOut.hs.roundedString(decimal: tokenOut.decimals)), !amountOut.isZero else {
             throw TradeError.zeroAmount
         }
@@ -47,7 +47,7 @@ extension KitV3 {
         return try await quoter.bestTradeExactOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amountOut)
     }
 
-    public func transactionData(bestTrade: TradeDataV3, tradeOptions: TradeOptions) throws -> TransactionData {
+    public func transactionData(bestTrade: TradeV3, tradeOptions: TradeOptions) throws -> TransactionData {
         swapRouter.transactionData(bestTrade: bestTrade, tradeOptions: tradeOptions)
     }
 

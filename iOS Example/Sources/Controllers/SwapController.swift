@@ -19,7 +19,6 @@ class SwapController: UIViewController {
         }
     }
     private var state: State = .idle
-    private var fee = KitV3.FeeAmount.lowest
 
     private let uniswapKit = try! UniswapKit.KitV3.instance(evmKit: Manager.shared.evmKit)
 
@@ -247,7 +246,7 @@ class SwapController: UIViewController {
         swapDataTask = Task { [weak self] in
             do {
                 let exactAmount: BigUInt
-                let bestTrade: TradeDataV3
+                let bestTrade: TradeV3
                 switch tradeType {
                 case .exactIn:
                     guard let amountString = fromTextField.text, let amount = Decimal(string: amountString),
@@ -340,7 +339,7 @@ class SwapController: UIViewController {
     }
 
 
-    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeDataV3) {
+    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeV3) {
         let estimatedAmount = tradeType == .exactIn ? bestTrade.tradeAmountOut : bestTrade.tradeAmountIn
 
         switch tradeType {
@@ -454,7 +453,7 @@ extension SwapController {
 
     enum State {
         case idle
-        case success(bestTrade: TradeDataV3)
+        case success(bestTrade: TradeV3)
     }
 
 }

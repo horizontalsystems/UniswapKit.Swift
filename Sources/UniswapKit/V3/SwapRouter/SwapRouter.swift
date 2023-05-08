@@ -11,7 +11,7 @@ class SwapRouter {
     }
 
     private func buildMethodForExact(
-            bestTrade: TradeDataV3,
+            bestTrade: TradeV3,
             recipient: Address
     ) -> ContractMethod {
         if bestTrade.swapPath.isSingle {
@@ -62,7 +62,7 @@ class SwapRouter {
 extension SwapRouter {
 
     func transactionData(
-            bestTrade: TradeDataV3,
+            bestTrade: TradeV3,
             tradeOptions: TradeOptions
     ) -> TransactionData {
         let recipient = tradeOptions.recipient ?? evmKit.receiveAddress

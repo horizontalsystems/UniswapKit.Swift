@@ -11,10 +11,9 @@ class Configuration {
     static private let arbiscanApiKey = "Z43JN5434XVNA5D73UGPWKF26G5D9MGDPZ"
     static private let bscScanKey = "5ZGSHWYHZVA8XZHB8PF6UUTRNNB4KT43ZZ"
 
-    let minLogLevel: Logger.Level = .debug
+    let minLogLevel: Logger.Level = .error
 
-
-    let chain: Chain = .ethereum
+    let chain: Chain = .arbitrumOne
     var rpcSource: RpcSource {
         switch chain {
         case .arbitrumOne: return RpcSource.arbitrumOneRpcHttp()
@@ -60,8 +59,10 @@ class Configuration {
         ]
         case .arbitrumOne: return [
             Erc20Token(name: "Ethereum", code: "ETH", contractAddress: nil, decimals: 18),
-            Erc20Token(name: "Uniswap", code: "UNI", contractAddress: try! Address(hex: "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0"), decimals: 18),
+            Erc20Token(name: "USDC", code: "USDC", contractAddress: try! Address(hex: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"), decimals: 6),
             Erc20Token(name: "USDT", code: "USDT", contractAddress: try! Address(hex: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"), decimals: 6),
+            Erc20Token(name: "Uniswap", code: "UNI", contractAddress: try! Address(hex: "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0"), decimals: 18),
+            Erc20Token(name: "LivePeer", code: "LPT", contractAddress: try! Address(hex: "0x289ba1701C2F088cf0faf8B3705246331cB8A839"), decimals: 18),
             Erc20Token(name: "Arbitrum", code: "ARB", contractAddress: try! Address(hex: "0x912CE59144191C1204E64559FE8253a0e49E6548"), decimals: 18),
             Erc20Token(name: "GMX", code: "GMX", contractAddress: try! Address(hex: "0xfc5A1A6EB076a2C7aD06eD22C90d7E710E35ad0a"), decimals: 18),
         ]
