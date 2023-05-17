@@ -246,7 +246,7 @@ class SwapController: UIViewController {
         swapDataTask = Task { [weak self] in
             do {
                 let exactAmount: BigUInt
-                let bestTrade: TradeV3
+                let bestTrade: TradeDataV3
                 switch tradeType {
                 case .exactIn:
                     guard let amountString = fromTextField.text, let amount = Decimal(string: amountString),
@@ -260,7 +260,8 @@ class SwapController: UIViewController {
                     bestTrade = try await uniswapKit.bestTradeExactIn(
                             tokenIn: token(fromToken),
                             tokenOut: token(toToken),
-                            amountIn: amount
+                            amountIn: amount,
+                            options: tradeOptions
                     )
                 case .exactOut:
                     guard let amountString = toTextField.text, let amount = Decimal(string: amountString),
@@ -275,7 +276,8 @@ class SwapController: UIViewController {
                     bestTrade = try await uniswapKit.bestTradeExactOut(
                             tokenIn: token(fromToken),
                             tokenOut: token(toToken),
-                            amountOut: amount
+                            amountOut: amount,
+                            options: tradeOptions
                     )
                 }
 
@@ -339,8 +341,8 @@ class SwapController: UIViewController {
     }
 
 
-    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeV3) {
-        let estimatedAmount = tradeType == .exactIn ? bestTrade.tradeAmountOut : bestTrade.tradeAmountIn
+    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeDataV3) {
+        let estimatedAmount = tradeType == .exactIn ? bestTrade.amountOut : bestTrade.amountIn
 
         switch tradeType {
         case .exactIn: toTextField.text = estimatedAmount?.description
@@ -372,7 +374,7 @@ class SwapController: UIViewController {
                     let signature = try Manager.shared.signer.signature(rawTransaction: raw)
                     let _ = try await Manager.shared.evmKit.send(rawTransaction: raw, signature: signature)
 
-                    self?.showSuccess(message: "Send successful! \(bestTrade.tradeAmountIn?.description) \(bestTrade.tradeAmountOut?.description)")
+                    self?.showSuccess(message: "Send successful! \(bestTrade.amountIn?.description) \(bestTrade.amountOut?.description)")
                 } catch {
                     self?.show(error: error.localizedDescription)
                 }
@@ -453,7 +455,7 @@ extension SwapController {
 
     enum State {
         case idle
-        case success(bestTrade: TradeV3)
+        case success(bestTrade: TradeDataV3)
     }
 
 }
