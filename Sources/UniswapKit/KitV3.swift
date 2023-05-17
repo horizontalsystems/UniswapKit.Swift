@@ -31,24 +31,26 @@ extension KitV3 {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal) async throws -> TradeV3 {
+    public func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: Decimal, options: TradeOptions) async throws -> TradeDataV3 {
         guard let amountIn = BigUInt(amountIn.hs.roundedString(decimal: tokenIn.decimals)), !amountIn.isZero else {
             throw TradeError.zeroAmount
         }
 
-        return try await quoter.bestTradeExactIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amountIn)
+        let trade = try await quoter.bestTradeExactIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amountIn)
+        return TradeDataV3(trade: trade, options: options)
     }
 
-    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal) async throws -> TradeV3 {
+    public func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: Decimal, options: TradeOptions) async throws -> TradeDataV3 {
         guard let amountOut = BigUInt(amountOut.hs.roundedString(decimal: tokenOut.decimals)), !amountOut.isZero else {
             throw TradeError.zeroAmount
         }
 
-        return try await quoter.bestTradeExactOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amountOut)
+        let trade = try await quoter.bestTradeExactOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amountOut)
+        return TradeDataV3(trade: trade, options: options)
     }
 
-    public func transactionData(bestTrade: TradeV3, tradeOptions: TradeOptions) throws -> TransactionData {
-        swapRouter.transactionData(bestTrade: bestTrade, tradeOptions: tradeOptions)
+    public func transactionData(bestTrade: TradeDataV3, tradeOptions: TradeOptions) throws -> TransactionData {
+        swapRouter.transactionData(tradeData: bestTrade, tradeOptions: tradeOptions)
     }
 
 }

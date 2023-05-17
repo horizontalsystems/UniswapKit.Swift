@@ -12,6 +12,8 @@ class SwapV3ContractMethodFactories: ContractMethodFactories {
             ExactOutputSingleMethodV1Factory(),
             ExactInputMethodFactory(),
             ExactOutputMethodFactory(),
+            UnwrapWeth9MethodFactory(),
+            MulticallMethodFactory(),
         ])
     }
 

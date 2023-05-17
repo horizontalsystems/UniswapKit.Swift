@@ -1,5 +1,6 @@
 import Foundation
 import BigInt
+import HsExtensions
 
 class PriceImpactHelper {
 
@@ -20,11 +21,11 @@ class PriceImpactHelper {
     }
 
     static func impact(price: Decimal, real: Decimal) -> Decimal {
-        (1 - (real / price)) * 100
+        (((real / price) - 1) * 100).hs.rounded(decimal: 2) / 100
     }
 
     static func price(`in`: BigUInt, out: BigUInt, shift: Int) -> Decimal? {
-        let shift10 = BigInt(10).power(abs(shift)) * (shift > 0 ? 1 : -1)
+        let shift10 = BigInt(10).power(abs(shift)) * (shift >= 0 ? 1 : -1)
         let fraction = Fraction(numerator: out, denominator: `in`) * shift10
         return fraction.toDecimal(decimals: 18)
     }
