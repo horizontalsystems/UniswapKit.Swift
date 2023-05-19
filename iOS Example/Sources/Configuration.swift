@@ -13,7 +13,7 @@ class Configuration {
 
     let minLogLevel: Logger.Level = .error
 
-    let chain: Chain = .arbitrumOne
+    let chain: Chain = .ethereum
     var rpcSource: RpcSource {
         switch chain {
         case .arbitrumOne: return RpcSource.arbitrumOneRpcHttp()
@@ -39,6 +39,7 @@ class Configuration {
         switch chain {
         case .ethereum: return [
             Erc20Token(name: "Ethereum", code: "ETH", contractAddress: nil, decimals: 18),
+            Erc20Token(name: "USDT", code: "USDT", contractAddress: try! Address(hex: "0xdAC17F958D2ee523a2206206994597C13D831ec7"), decimals: 6),
             Erc20Token(name: "1INCH", code: "1INCH", contractAddress: try! Address(hex: "0x111111111117dC0aa78b770fA6A738034120C302"), decimals: 18),
             Erc20Token(name: "ArcBlock", code: "ABT", contractAddress: try! Address(hex: "0xB98d4C97425d9908E66E53A6fDf673ACcA0BE986"), decimals: 18),
             Erc20Token(name: "DAI", code: "DAI", contractAddress: try! Address(hex: "0x6b175474e89094c44da98b954eedeac495271d0f"), decimals: 18),
