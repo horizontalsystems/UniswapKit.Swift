@@ -1,6 +1,8 @@
 import Foundation
 import EvmKit
 import BigInt
+import Alamofire
+import HsToolKit
 
 public class Quoter {
     private let quoterAddress = try! Address(hex: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e") // for all supported //v1 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6
@@ -12,14 +14,19 @@ public class Quoter {
         self.tokenFactory = tokenFactory
     }
 
-    private func correctedPrice(price: Decimal?, tokenIn: Address, tokenOut: Address) -> Decimal? {
-        guard let price else { return nil }
-        if tokenIn.hex.uppercased() < tokenOut.hex.uppercased() {
-            return price
-        }
-        return 1 / price
-    }
+    private func correctedX96Price(sqrtPriceX96: BigUInt, tokenIn: Token, tokenOut: Token) -> Decimal? {
+        let reverted = tokenIn.address.hex >= tokenOut.address.hex
 
+        let shift = (tokenIn.decimals - tokenOut.decimals) * (reverted ? -1 : 1)
+        guard let price = PriceImpactHelper.price(from: sqrtPriceX96, shift: shift) else {
+            return nil
+        }
+
+        if reverted {
+            return 1 / price
+        }
+        return price
+    }
 
     private func quoteExact(tradeType: TradeType, tokenIn: Address, tokenOut: Address, amount: BigUInt, fee: KitV3.FeeAmount) async throws -> QuoteExactSingleResponse {
         let method = tradeType == .exactIn ?
@@ -36,12 +43,20 @@ public class Quoter {
                         amountOut: amount,
                         sqrtPriceLimitX96: 0)
 
-        let data = try await call(data: method.encodedABI())
-        guard let response = QuoteExactSingleResponse(data: data) else {
+        do {
+            let data = try await call(data: method.encodedABI())
+            guard let response = QuoteExactSingleResponse(data: data) else {
+                throw KitV3.TradeError.tradeNotFound
+            }
+
+            return response
+        } catch {
+            if error.isExplicitlyCancelled {    // throw cancellation for stop requests
+                throw error
+            }
+
             throw KitV3.TradeError.tradeNotFound
         }
-
-        return response
     }
 
     private func quote(swapPath: SwapPath, tradeType: TradeType, amount: BigUInt) async throws -> BigUInt {
@@ -61,22 +76,26 @@ public class Quoter {
         // check all fees and found the best amount for trade.
         var bestTrade: (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse)?
         for fee in fees {
-            guard let response = try? await quoteExact(
-                    tradeType: tradeType,
-                    tokenIn: tokenIn.address,
-                    tokenOut: tokenOut.address,
-                    amount: amount,
-                    fee: fee
-            ) else {
-                continue
-            }
+            do {
+                let response = try await quoteExact(
+                        tradeType: tradeType,
+                        tokenIn: tokenIn.address,
+                        tokenOut: tokenOut.address,
+                        amount: amount,
+                        fee: fee
+                )
+                // For exactIn - we must found the highest amountOut, for exactOut - smallest amountIn
+                if let bestTrade, (tradeType == .exactIn ? bestTrade.response.amount >= response.amount : bestTrade.response.amount <= response.amount) {
+                    continue
+                }
 
-            // For exactIn - we must found the highest amountOut, for exactOut - smallest amountIn
-            if let bestTrade, (tradeType == .exactIn ? bestTrade.response.amount >= response.amount : bestTrade.response.amount <= response.amount) {
-                continue
+                bestTrade = (fee: fee, response: response)
+            } catch {
+                if case .tradeNotFound = error as? KitV3.TradeError {
+                    continue
+                }
+                throw error
             }
-
-            bestTrade = (fee: fee, response: response)
         }
 
         guard let bestTrade else {
@@ -91,10 +110,10 @@ public class Quoter {
 
         let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeOut.fee)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
-        let slotPrice = correctedPrice(
-                price: PriceImpactHelper.price(from: sqrtPriceX96, shift: tokenIn.decimals - tokenOut.decimals),
-                tokenIn: tokenIn.address,
-                tokenOut: tokenOut.address
+        let slotPrice = correctedX96Price(
+                sqrtPriceX96: sqrtPriceX96,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut
         )
 
         let swapPath = SwapPath([SwapPathItem(token1: tokenIn.address, token2: tokenOut.address, fee: bestTradeOut.fee)])
@@ -106,10 +125,10 @@ public class Quoter {
 
         let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeIn.fee)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
-        let slotPrice = correctedPrice(
-                price: PriceImpactHelper.price(from: sqrtPriceX96, shift: tokenIn.decimals - tokenOut.decimals),
-                tokenIn: tokenIn.address,
-                tokenOut: tokenOut.address
+        let slotPrice = correctedX96Price(
+                sqrtPriceX96: sqrtPriceX96,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut
         )
 
         let swapPath = SwapPath([SwapPathItem(token1: tokenOut.address, token2: tokenIn.address, fee: bestTradeIn.fee)])
@@ -150,7 +169,9 @@ public class Quoter {
             case .exactOut: return try await bestTradeSingleOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
             }
         } catch {
-//            print("error! \(error)")
+            guard case .tradeNotFound = error as? KitV3.TradeError else {   // ignore 'not found' error, try found other trade
+                throw error
+            }
         }
         do {
             switch tradeType {
@@ -158,9 +179,8 @@ public class Quoter {
             case .exactOut: return try await bestTradeMultihopOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
             }
         } catch {
-//            print("error! \(error)")
+            throw error
         }
-        throw KitV3.TradeError.tradeNotFound
     }
 
 
