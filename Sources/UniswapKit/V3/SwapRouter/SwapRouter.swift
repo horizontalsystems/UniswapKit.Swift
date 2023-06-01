@@ -11,9 +11,10 @@ class SwapRouter {
     }
 
     private func buildMethodForExact(
-            trade: TradeV3,
+            tradeData: TradeDataV3,
             recipient: Address
     ) -> ContractMethod {
+        let trade = tradeData.trade
         if trade.swapPath.isSingle {
             switch trade.type {
             case .exactIn:
@@ -23,7 +24,7 @@ class SwapRouter {
                         fee: trade.swapPath.firstFeeAmount.rawValue,
                         recipient: recipient,
                         amountIn: trade.tokenAmountIn.rawAmount,
-                        amountOutMinimum: trade.tokenAmountOut.rawAmount,
+                        amountOutMinimum: tradeData.tokenAmountOutMin.rawAmount,
                         sqrtPriceLimitX96: 0
                 )
             case .exactOut:
@@ -33,7 +34,7 @@ class SwapRouter {
                         fee: trade.swapPath.firstFeeAmount.rawValue,
                         recipient: recipient,
                         amountOut: trade.tokenAmountOut.rawAmount,
-                        amountInMaximum: trade.tokenAmountIn.rawAmount,
+                        amountInMaximum: tradeData.tokenAmountInMax.rawAmount,
                         sqrtPriceLimitX96: 0
                 )
             }
@@ -45,14 +46,14 @@ class SwapRouter {
                     path: trade.swapPath.abiEncodePacked,
                     recipient: recipient,
                     amountIn: trade.tokenAmountIn.rawAmount,
-                    amountOutMinimum: trade.tokenAmountOut.rawAmount
+                    amountOutMinimum: tradeData.tokenAmountOutMin.rawAmount
             )
         case .exactOut:
             return ExactOutputMethod(
                     path: trade.swapPath.abiEncodePacked,
                     recipient: recipient,
                     amountOut: trade.tokenAmountOut.rawAmount,
-                    amountInMaximum: trade.tokenAmountIn.rawAmount
+                    amountInMaximum: tradeData.tokenAmountInMax.rawAmount
             )
         }
     }
@@ -73,7 +74,7 @@ extension SwapRouter {
         let ethValue = tradeData.trade.tokenAmountIn.token.isEther ? tradeData.trade.tokenAmountIn.rawAmount : 0
 
         let swapMethod = buildMethodForExact(
-                trade: tradeData.trade,
+                tradeData: tradeData,
                 recipient: swapRecipient
         )
 
