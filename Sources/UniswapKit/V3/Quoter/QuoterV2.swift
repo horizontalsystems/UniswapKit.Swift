@@ -4,14 +4,21 @@ import BigInt
 import Alamofire
 import HsToolKit
 
-public class Quoter {
-    private let quoterAddress = try! Address(hex: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e") // for all supported //v1 0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6
+public class QuoterV2 {
+    private let quoterAddress: Address
     private let evmKit: EvmKit.Kit
     private let tokenFactory: TokenFactory
+    private let dexType: DexType
 
-    init(evmKit: EvmKit.Kit, tokenFactory: TokenFactory) {
+    private let fees: [KitV3.FeeAmount]
+
+    init(evmKit: EvmKit.Kit, tokenFactory: TokenFactory, dexType: DexType) {
         self.evmKit = evmKit
         self.tokenFactory = tokenFactory
+        self.dexType = dexType
+
+        quoterAddress = dexType.quoterAddress(chain: evmKit.chain)
+        fees = KitV3.FeeAmount.sorted(dexType: dexType)
     }
 
     private func correctedX96Price(sqrtPriceX96: BigUInt, tokenIn: Token, tokenOut: Token) -> Decimal? {
@@ -72,7 +79,7 @@ public class Quoter {
         return BigUInt(data[0...31])
     }
 
-    private func bestTradeExact(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt, fees: [KitV3.FeeAmount] = KitV3.FeeAmount.allCases) async throws -> (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse) {
+    private func bestTradeExact(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse) {
         // check all fees and found the best amount for trade.
         var bestTrade: (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse)?
         for fee in fees {
@@ -108,7 +115,7 @@ public class Quoter {
     private func bestTradeSingleIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
         let bestTradeOut = try await bestTradeExact(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
 
-        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeOut.fee)
+        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeOut.fee, dexType: dexType)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
         let slotPrice = correctedX96Price(
                 sqrtPriceX96: sqrtPriceX96,
@@ -123,7 +130,7 @@ public class Quoter {
     private func bestTradeSingleOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
         let bestTradeIn = try await bestTradeExact(tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
 
-        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeIn.fee)
+        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeIn.fee, dexType: dexType)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
         let slotPrice = correctedX96Price(
                 sqrtPriceX96: sqrtPriceX96,
@@ -195,7 +202,7 @@ public class Quoter {
 
 }
 
-extension Quoter {
+extension QuoterV2 {
 
     func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
         try await bestTrade(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)

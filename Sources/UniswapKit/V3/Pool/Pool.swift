@@ -2,8 +2,6 @@ import Foundation
 import EvmKit
 
 class Pool {
-    private static let factoryAddress = try! Address(hex: "0x1F98431c8aD98523631AE4a59f267346ea31F984")
-
     private let evmKit: EvmKit.Kit
     private let token0: Address
     private let token1: Address
@@ -11,7 +9,7 @@ class Pool {
 
     let poolAddress: Address
 
-    init(evmKit: EvmKit.Kit, token0: Address, token1: Address, fee: KitV3.FeeAmount) async throws {
+    init(evmKit: EvmKit.Kit, token0: Address, token1: Address, fee: KitV3.FeeAmount, dexType: DexType) async throws {
         self.evmKit = evmKit
         self.token0 = token0
         self.token1 = token1
@@ -19,7 +17,12 @@ class Pool {
 
         let method = GetPoolMethod(token0: token0, token1: token1, fee: fee.rawValue)
 
-        let poolData = try await Self.call(evmKit: evmKit, address: Self.factoryAddress, data: method.encodedABI())
+        let poolData = try await Self.call(
+                evmKit: evmKit,
+                address: dexType.factoryAddress(chain: evmKit.chain),
+                data: method.encodedABI()
+        )
+
         guard poolData.count >= 32 else {
             throw PoolError.cantCreateAddress
         }

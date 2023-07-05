@@ -4,11 +4,11 @@ import BigInt
 
 public class KitV3 {
     private let evmKit: EvmKit.Kit
-    private let quoter: Quoter
+    private let quoter: QuoterV2
     private let swapRouter: SwapRouter
     private let tokenFactory: TokenFactory
 
-    init(evmKit: EvmKit.Kit, quoter: Quoter, swapRouter: SwapRouter, tokenFactory: TokenFactory) {
+    init(evmKit: EvmKit.Kit, quoter: QuoterV2, swapRouter: SwapRouter, tokenFactory: TokenFactory) {
         self.evmKit = evmKit
         self.quoter = quoter
         self.swapRouter = swapRouter
@@ -57,14 +57,14 @@ extension KitV3 {
 
 extension KitV3 {
 
-    public static func instance(evmKit: EvmKit.Kit) throws -> KitV3 {
+    public static func instance(evmKit: EvmKit.Kit, dexType: DexType) throws -> KitV3 {
         guard isSupported(chain: evmKit.chain) else {
             throw KitError.unsupportedChain
         }
 
         let tokenFactory = try TokenFactory(chain: evmKit.chain)
-        let quoter = Quoter(evmKit: evmKit, tokenFactory: tokenFactory)
-        let swapRouter = SwapRouter(evmKit: evmKit)
+        let quoter = QuoterV2(evmKit: evmKit, tokenFactory: tokenFactory, dexType: dexType)
+        let swapRouter = SwapRouter(evmKit: evmKit, dexType: dexType)
         let uniswapKit = KitV3(evmKit: evmKit, quoter: quoter, swapRouter: swapRouter, tokenFactory: tokenFactory)
 
         return uniswapKit
@@ -90,8 +90,18 @@ extension KitV3 {
     public enum FeeAmount: BigUInt, CaseIterable {
         case lowest = 100
         case low = 500
-        case medium = 3000
+        case mediumPancakeSwap = 2500
+        case mediumUniswap = 3000
         case high = 10000
+
+        static func sorted(dexType: DexType) -> [FeeAmount] {
+            [
+                .lowest,
+                .low,
+                dexType.mediumFeeAmount,
+                .high
+            ]
+        }
     }
 
     public enum TradeError: Error {
