@@ -3,11 +3,13 @@ import EvmKit
 import BigInt
 
 class SwapRouter {
-    let routerAddress = try! Address(hex: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45")
+    let routerAddress: Address
     private let evmKit: EvmKit.Kit
 
-    init(evmKit: EvmKit.Kit) {
+    init(evmKit: EvmKit.Kit, dexType: DexType) {
         self.evmKit = evmKit
+
+        routerAddress = dexType.routerAddress(chain: evmKit.chain)
     }
 
     private func buildMethodForExact(
