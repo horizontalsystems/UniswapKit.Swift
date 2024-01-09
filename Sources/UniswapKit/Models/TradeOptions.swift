@@ -1,5 +1,5 @@
-import Foundation
 import EvmKit
+import Foundation
 
 public struct TradeOptions {
     public static let defaultSlippage: Decimal = 0.5
@@ -24,5 +24,4 @@ public struct TradeOptions {
             return Fraction(numerator: 5, denominator: 1000)
         }
     }
-
 }

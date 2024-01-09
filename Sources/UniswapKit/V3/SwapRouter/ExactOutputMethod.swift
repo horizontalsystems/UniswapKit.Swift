@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class ExactOutputMethod: ContractMethod {
     static let methodSignature = "exactOutput((bytes,address,uint256,uint256))"
@@ -24,11 +24,9 @@ class ExactOutputMethod: ContractMethod {
     override var arguments: [Any] {
         [ContractMethodHelper.DynamicStructParameter([path, recipient, amountOut, amountInMaximum])]
     }
-
 }
 
 extension ExactOutputMethod {
-
     var tokenIn: Address {
         Address(raw: path.suffix(20))
     }
@@ -36,5 +34,4 @@ extension ExactOutputMethod {
     var tokenOut: Address {
         Address(raw: path.prefix(20))
     }
-
 }

@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class ExactInputSingleMethod: ContractMethod {
     static let methodSignature = "exactInputSingle((address,address,uint24,address,uint256,uint256,uint160))"
@@ -30,5 +30,4 @@ class ExactInputSingleMethod: ContractMethod {
     override var arguments: [Any] {
         [tokenIn, tokenOut, fee, recipient, amountIn, amountOutMinimum, sqrtPriceLimitX96]
     }
-
 }

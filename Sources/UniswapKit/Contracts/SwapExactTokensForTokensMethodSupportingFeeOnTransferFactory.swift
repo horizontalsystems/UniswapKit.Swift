@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class SwapExactTokensForTokensMethodSupportingFeeOnTransferFactory: IContractMethodFactory {
     let methodId: Data = ContractMethodHelper.methodId(signature: SwapExactTokensForTokensMethod.methodSignature(supportingFeeOnTransfer: true))
@@ -11,11 +11,11 @@ class SwapExactTokensForTokensMethodSupportingFeeOnTransferFactory: IContractMet
               let amountOutMin = parsedArguments[1] as? BigUInt,
               let path = parsedArguments[2] as? [Address],
               let to = parsedArguments[3] as? Address,
-              let deadline = parsedArguments[4] as? BigUInt else {
+              let deadline = parsedArguments[4] as? BigUInt
+        else {
             throw ContractMethodFactories.DecodeError.invalidABI
         }
 
         return SwapExactTokensForTokensMethod(amountIn: amountIn, amountOutMin: amountOutMin, path: path, to: to, deadline: deadline, supportingFeeOnTransfer: true)
     }
-
 }

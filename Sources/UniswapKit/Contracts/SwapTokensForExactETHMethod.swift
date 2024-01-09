@@ -1,5 +1,5 @@
-import EvmKit
 import BigInt
+import EvmKit
 
 class SwapTokensForExactETHMethod: ContractMethod {
     static let methodSignature = "swapTokensForExactETH(uint256,uint256,address[],address,uint256)"
@@ -25,5 +25,4 @@ class SwapTokensForExactETHMethod: ContractMethod {
     override var arguments: [Any] {
         [amountOut, amountInMax, path, to, deadline]
     }
-
 }

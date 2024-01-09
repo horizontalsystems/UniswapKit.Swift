@@ -1,5 +1,5 @@
-import Foundation
 import EvmKit
+import Foundation
 
 class Pool {
     private let evmKit: EvmKit.Kit
@@ -18,16 +18,16 @@ class Pool {
         let method = GetPoolMethod(token0: token0, token1: token1, fee: fee.rawValue)
 
         let poolData = try await Self.call(
-                evmKit: evmKit,
-                address: dexType.factoryAddress(chain: evmKit.chain),
-                data: method.encodedABI()
+            evmKit: evmKit,
+            address: dexType.factoryAddress(chain: evmKit.chain),
+            data: method.encodedABI()
         )
 
         guard poolData.count >= 32 else {
             throw PoolError.cantCreateAddress
         }
 
-        poolAddress = Address(raw: poolData[0..<32])
+        poolAddress = Address(raw: poolData[0 ..< 32])
     }
 
     private static func call(evmKit: EvmKit.Kit, address: Address, data: Data) async throws -> Data {
@@ -38,11 +38,9 @@ class Pool {
             throw error
         }
     }
-
 }
 
 extension Pool {
-
     public func slot0() async throws -> Slot0 {
         let method = Slot0Method()
         let data = try await Self.call(evmKit: evmKit, address: poolAddress, data: method.encodedABI())
@@ -66,5 +64,4 @@ extension Pool {
         case cantFetchSlot0
         case cantFetchToken0
     }
-
 }

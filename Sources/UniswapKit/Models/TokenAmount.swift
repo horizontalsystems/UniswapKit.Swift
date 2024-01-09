@@ -1,5 +1,5 @@
-import Foundation
 import BigInt
+import Foundation
 
 struct TokenAmount {
     let token: Token
@@ -7,7 +7,7 @@ struct TokenAmount {
 
     init(token: Token, rawAmount: BigUInt) {
         self.token = token
-        self.fraction = Fraction(numerator: rawAmount, denominator: BigUInt(10).power(token.decimals))
+        fraction = Fraction(numerator: rawAmount, denominator: BigUInt(10).power(token.decimals))
     }
 
     init(token: Token, decimal: Decimal) throws {
@@ -37,26 +37,21 @@ struct TokenAmount {
     var decimalAmount: Decimal? {
         fraction.toDecimal(decimals: token.decimals)
     }
-
 }
 
 extension TokenAmount: Comparable {
-
-    public static func <(lhs: TokenAmount, rhs: TokenAmount) -> Bool {
+    public static func < (lhs: TokenAmount, rhs: TokenAmount) -> Bool {
         lhs.fraction < rhs.fraction
     }
 
-    public static func ==(lhs: TokenAmount, rhs: TokenAmount) -> Bool {
+    public static func == (lhs: TokenAmount, rhs: TokenAmount) -> Bool {
         lhs.fraction == rhs.fraction
     }
-
 }
 
 extension TokenAmount: CustomStringConvertible {
-
     public var description: String {
         let amountString = decimalAmount?.description ?? "nil"
         return "[token: \(token); amount: \(amountString)]"
     }
-
 }

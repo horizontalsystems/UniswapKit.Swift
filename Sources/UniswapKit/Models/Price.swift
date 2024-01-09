@@ -1,5 +1,5 @@
-import Foundation
 import BigInt
+import Foundation
 
 struct Price {
     private let baseToken: Token
@@ -13,16 +13,16 @@ struct Price {
         self.fraction = fraction
 
         scalar = Fraction(
-                numerator: BigUInt(10).power(baseToken.decimals),
-                denominator: BigUInt(10).power(quoteToken.decimals)
+            numerator: BigUInt(10).power(baseToken.decimals),
+            denominator: BigUInt(10).power(quoteToken.decimals)
         )
     }
 
     init(baseTokenAmount: TokenAmount, quoteTokenAmount: TokenAmount) {
         self.init(
-                baseToken: baseTokenAmount.token,
-                quoteToken: quoteTokenAmount.token,
-                fraction: Fraction(numerator: quoteTokenAmount.rawAmount, denominator: baseTokenAmount.rawAmount)
+            baseToken: baseTokenAmount.token,
+            quoteToken: quoteTokenAmount.token,
+            fraction: Fraction(numerator: quoteTokenAmount.rawAmount, denominator: baseTokenAmount.rawAmount)
         )
     }
 
@@ -37,22 +37,17 @@ struct Price {
     var invertedPrice: Price {
         Price(baseToken: quoteToken, quoteToken: baseToken, fraction: fraction.inverted)
     }
-
 }
 
 extension Price {
-
-    public static func *(lhs: Price, rhs: Price) -> Price {
+    public static func * (lhs: Price, rhs: Price) -> Price {
         let fraction = lhs.fraction * rhs.fraction
         return Price(baseToken: lhs.baseToken, quoteToken: rhs.quoteToken, fraction: fraction)
     }
-
 }
 
 extension Price: CustomStringConvertible {
-
     public var description: String {
         "[baseToken: \(baseToken); quoteToken: \(quoteToken); value: \(decimalValue?.description ?? "nil")]"
     }
-
 }

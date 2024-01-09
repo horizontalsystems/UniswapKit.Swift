@@ -1,6 +1,6 @@
-import EvmKit
-import Eip20Kit
 import BigInt
+import Eip20Kit
+import EvmKit
 
 public class SwapDecoration: TransactionDecoration {
     public let contractAddress: Address
@@ -26,15 +26,15 @@ public class SwapDecoration: TransactionDecoration {
     private func tag(token: Token, type: TransactionTag.TagType) -> TransactionTag {
         switch token {
         case .evmCoin: return TransactionTag(type: type, protocol: .native)
-        case .eip20Coin(let tokenAddress, _): return TransactionTag(type: type, protocol: .eip20, contractAddress: tokenAddress)
+        case let .eip20Coin(tokenAddress, _): return TransactionTag(type: type, protocol: .eip20, contractAddress: tokenAddress)
         }
     }
 
-    public override func tags() -> [TransactionTag] {
+    override public func tags() -> [TransactionTag] {
         var tags = [
             tag(token: tokenIn, type: .swap),
             tag(token: tokenOut, type: .swap),
-            tag(token: tokenIn, type: .outgoing)
+            tag(token: tokenIn, type: .outgoing),
         ]
 
         if recipient == nil {
@@ -43,26 +43,23 @@ public class SwapDecoration: TransactionDecoration {
 
         return tags
     }
-
 }
 
-extension SwapDecoration {
-
-    public enum Amount {
+public extension SwapDecoration {
+    enum Amount {
         case exact(value: BigUInt)
         case extremum(value: BigUInt)
     }
 
-    public enum Token {
+    enum Token {
         case evmCoin
         case eip20Coin(address: Address, tokenInfo: TokenInfo?)
 
         public var tokenInfo: TokenInfo? {
             switch self {
-            case .eip20Coin(_, let tokenInfo): return tokenInfo
+            case let .eip20Coin(_, tokenInfo): return tokenInfo
             default: return nil
             }
         }
     }
-
 }

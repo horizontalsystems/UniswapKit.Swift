@@ -1,9 +1,9 @@
-import UIKit
-import SnapKit
-import EvmKit
-import UniswapKit
 import BigInt
 import Eip20Kit
+import EvmKit
+import SnapKit
+import UIKit
+import UniswapKit
 
 class SwapController: UIViewController {
     private var gasPrice = GasPrice.legacy(gasPrice: 1_000_000_000)
@@ -18,6 +18,7 @@ class SwapController: UIViewController {
             syncCoinLabels()
         }
     }
+
     private var state: State = .idle
 
     private let uniswapKit = try! UniswapKit.KitV3.instance(evmKit: Manager.shared.evmKit)
@@ -204,7 +205,7 @@ class SwapController: UIViewController {
 
             fromToken = token
             if toToken.code == token.code {
-               toToken = oldToken
+                toToken = oldToken
             }
         } else {
             guard toToken.code != token.code else {
@@ -236,7 +237,7 @@ class SwapController: UIViewController {
     }
 
     private func sync(allowance: String?) {
-        allowanceLabel.text = "Allowance: \((allowance ?? "N/A"))"
+        allowanceLabel.text = "Allowance: \(allowance ?? "N/A")"
     }
 
     @objc private func syncSwapData() {
@@ -258,26 +259,25 @@ class SwapController: UIViewController {
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactIn(
-                            tokenIn: token(fromToken),
-                            tokenOut: token(toToken),
-                            amountIn: amount,
-                            options: tradeOptions
+                        tokenIn: token(fromToken),
+                        tokenOut: token(toToken),
+                        amountIn: amount,
+                        options: tradeOptions
                     )
                 case .exactOut:
                     guard let amountString = toTextField.text, let amount = Decimal(string: amountString),
                           let amountBigUInt = BigUInt(amount.hs.roundedString(decimal: toToken.decimals))
                     else {
-
                         show(error: "Invalid amount to")
                         return
                     }
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactOut(
-                            tokenIn: token(fromToken),
-                            tokenOut: token(toToken),
-                            amountOut: amount,
-                            options: tradeOptions
+                        tokenIn: token(fromToken),
+                        tokenOut: token(toToken),
+                        amountOut: amount,
+                        options: tradeOptions
                     )
                 }
 
@@ -310,7 +310,8 @@ class SwapController: UIViewController {
 
     @objc private func approve() {
         guard let amountString = fromTextField.text, let amount = Decimal(string: amountString),
-              let amountIn = BigUInt(amount.hs.roundedString(decimal: fromToken.decimals)) else {
+              let amountIn = BigUInt(amount.hs.roundedString(decimal: fromToken.decimals))
+        else {
             show(error: "Invalid amount from")
             return
         }
@@ -340,8 +341,7 @@ class SwapController: UIViewController {
         }
     }
 
-
-    private func syncEstimated(tradeType: TradeType, exact: BigUInt, bestTrade: TradeDataV3) {
+    private func syncEstimated(tradeType: TradeType, exact _: BigUInt, bestTrade: TradeDataV3) {
         let estimatedAmount = tradeType == .exactIn ? bestTrade.amountOut : bestTrade.amountIn
 
         switch tradeType {
@@ -360,10 +360,11 @@ class SwapController: UIViewController {
 
         do {
             let transactionData = try uniswapKit.transactionData(
-                    bestTrade: bestTrade,
-                    tradeOptions: tradeOptions)
+                bestTrade: bestTrade,
+                tradeOptions: tradeOptions
+            )
 
-            print("tx input: " , transactionData.input.hs.hexString)
+            print("tx input: ", transactionData.input.hs.hexString)
             let gasPrice = gasPrice
             Task { [weak self] in
                 do {
@@ -384,7 +385,7 @@ class SwapController: UIViewController {
         }
     }
 
-    private func onSend(tx: FullTransaction) {
+    private func onSend(tx _: FullTransaction) {
         print("Successfully send!")
     }
 
@@ -416,11 +417,9 @@ class SwapController: UIViewController {
         }
         return false
     }
-
 }
 
 extension SwapController {
-
     @objc func textFieldDidChange(_ textField: UITextField) {
         let newTradeType: TradeType = textField == fromTextField ? .exactIn : .exactOut
 
@@ -440,11 +439,9 @@ extension SwapController {
 
         syncSwapData()
     }
-
 }
 
 extension SwapController {
-
     func token(_ erc20Token: Erc20Token) -> Token {
         guard let contractAddress = erc20Token.contractAddress else {
             return uniswapKit.etherToken
@@ -457,5 +454,4 @@ extension SwapController {
         case idle
         case success(bestTrade: TradeDataV3)
     }
-
 }

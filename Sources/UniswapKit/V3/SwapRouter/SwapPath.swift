@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 public class SwapPath {
     public let items: [SwapPathItem]
@@ -10,15 +10,13 @@ public class SwapPath {
     }
 
     private func encodeUnit24(value: BigUInt) -> Data {
-        let data =  value.serialize()
+        let data = value.serialize()
         let prePadding = Data(repeating: 0, count: max(0, 3 - data.count))
         return prePadding + data
     }
-
 }
 
 extension SwapPath {
-
     var isSingle: Bool { items.count == 1 }
     var firstFeeAmount: KitV3.FeeAmount { items.first!.fee }
 
@@ -36,15 +34,12 @@ extension SwapPath {
 
         return result
     }
-
 }
 
 extension SwapPath {
-
     enum PathError: Error {
         case empty
     }
-
 }
 
 public struct SwapPathItem {
@@ -57,5 +52,4 @@ public struct SwapPathItem {
         self.token2 = token2
         self.fee = fee
     }
-
 }

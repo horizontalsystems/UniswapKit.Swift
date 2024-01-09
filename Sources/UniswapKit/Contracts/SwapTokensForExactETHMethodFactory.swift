@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class SwapTokensForExactETHMethodFactory: IContractMethodFactory {
     let methodId: Data = ContractMethodHelper.methodId(signature: SwapTokensForExactETHMethod.methodSignature)
@@ -11,11 +11,11 @@ class SwapTokensForExactETHMethodFactory: IContractMethodFactory {
               let amountInMax = parsedArguments[1] as? BigUInt,
               let path = parsedArguments[2] as? [Address],
               let to = parsedArguments[3] as? Address,
-              let deadline = parsedArguments[4] as? BigUInt else {
+              let deadline = parsedArguments[4] as? BigUInt
+        else {
             throw ContractMethodFactories.DecodeError.invalidABI
         }
 
         return SwapTokensForExactETHMethod(amountOut: amountOut, amountInMax: amountInMax, path: path, to: to, deadline: deadline)
     }
-
 }

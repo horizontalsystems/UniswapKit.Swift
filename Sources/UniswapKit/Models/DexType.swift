@@ -46,5 +46,4 @@ public enum DexType {
             return try! Address(hex: "0x13f4EA83D0bd40E75C8222255bc855a974568Dd4")
         }
     }
-
 }

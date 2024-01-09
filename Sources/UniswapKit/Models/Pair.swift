@@ -1,7 +1,7 @@
-import Foundation
-import EvmKit
-import HsCryptoKit
 import BigInt
+import EvmKit
+import Foundation
+import HsCryptoKit
 import HsExtensions
 
 public struct Pair {
@@ -38,7 +38,7 @@ public struct Pair {
             throw Kit.PairError.notInvolvedToken
         }
 
-        guard reserve0.rawAmount != 0 && reserve1.rawAmount != 0 else {
+        guard reserve0.rawAmount != 0, reserve1.rawAmount != 0 else {
             throw Kit.PairError.insufficientReserves
         }
 
@@ -61,7 +61,7 @@ public struct Pair {
             throw Kit.PairError.notInvolvedToken
         }
 
-        guard reserve0.rawAmount != 0 && reserve1.rawAmount != 0 else {
+        guard reserve0.rawAmount != 0, reserve1.rawAmount != 0 else {
             throw Kit.PairError.insufficientReserves
         }
 
@@ -83,26 +83,21 @@ public struct Pair {
 
         return TokenAmount(token: tokenIn, rawAmount: amountIn)
     }
-
 }
 
 extension Pair {
-
     static func address(token0: Token, token1: Token, factoryAddressString: String, initCodeHashString: String) -> Address {
         let data = "ff".hs.hexData! +
-                factoryAddressString.hs.hexData! +
-                Crypto.sha3(token0.address.raw + token1.address.raw) +
-                initCodeHashString.hs.hexData!
+            factoryAddressString.hs.hexData! +
+            Crypto.sha3(token0.address.raw + token1.address.raw) +
+            initCodeHashString.hs.hexData!
 
         return Address(raw: Crypto.sha3(data).suffix(20))
     }
-
 }
 
 extension Pair: CustomStringConvertible {
-
     public var description: String {
         "[reserve0: \(reserve0); reserve1: \(reserve1)]"
     }
-
 }
