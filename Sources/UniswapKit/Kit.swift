@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 public class Kit {
     private let tradeManager: TradeManager
@@ -12,24 +12,22 @@ public class Kit {
         self.pairSelector = pairSelector
         self.tokenFactory = tokenFactory
     }
-
 }
 
-extension Kit {
-
-    public var routerAddress: Address {
+public extension Kit {
+    var routerAddress: Address {
         tradeManager.routerAddress
     }
 
-    public var etherToken: Token {
+    var etherToken: Token {
         tokenFactory.etherToken
     }
 
-    public func token(contractAddress: Address, decimals: Int) -> Token {
+    func token(contractAddress: Address, decimals: Int) -> Token {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    public func swapData(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
+    func swapData(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
         let tokenPairs = pairSelector.tokenPairs(tokenA: tokenIn, tokenB: tokenOut)
 
         let pairs = try await withThrowingTaskGroup(of: Pair.self) { taskGroup in
@@ -45,7 +43,7 @@ extension Kit {
         return SwapData(pairs: pairs, tokenIn: tokenIn, tokenOut: tokenOut)
     }
 
-    public func bestTradeExactIn(swapData: SwapData, amountIn: Decimal, options: TradeOptions = TradeOptions()) throws -> TradeData {
+    func bestTradeExactIn(swapData: SwapData, amountIn: Decimal, options: TradeOptions = TradeOptions()) throws -> TradeData {
         guard amountIn > 0 else {
             throw TradeError.zeroAmount
         }
@@ -53,9 +51,9 @@ extension Kit {
         let tokenAmountIn = try TokenAmount(token: swapData.tokenIn, decimal: amountIn)
 
         let sortedTrades = try TradeManager.tradesExactIn(
-                pairs: swapData.pairs,
-                tokenAmountIn: tokenAmountIn,
-                tokenOut: swapData.tokenOut
+            pairs: swapData.pairs,
+            tokenAmountIn: tokenAmountIn,
+            tokenOut: swapData.tokenOut
         ).sorted()
 
         guard let bestTrade = sortedTrades.first else {
@@ -65,7 +63,7 @@ extension Kit {
         return TradeData(trade: bestTrade, options: options)
     }
 
-    public func bestTradeExactOut(swapData: SwapData, amountOut: Decimal, options: TradeOptions = TradeOptions()) throws -> TradeData {
+    func bestTradeExactOut(swapData: SwapData, amountOut: Decimal, options: TradeOptions = TradeOptions()) throws -> TradeData {
         guard amountOut > 0 else {
             throw TradeError.zeroAmount
         }
@@ -73,9 +71,9 @@ extension Kit {
         let tokenAmountOut = try TokenAmount(token: swapData.tokenOut, decimal: amountOut)
 
         let sortedTrades = try TradeManager.tradesExactOut(
-                pairs: swapData.pairs,
-                tokenIn: swapData.tokenIn,
-                tokenAmountOut: tokenAmountOut
+            pairs: swapData.pairs,
+            tokenIn: swapData.tokenIn,
+            tokenAmountOut: tokenAmountOut
         ).sorted()
 
 //        print("Trades: \(sortedTrades)")
@@ -87,15 +85,13 @@ extension Kit {
         return TradeData(trade: bestTrade, options: options)
     }
 
-    public func transactionData(tradeData: TradeData) throws -> TransactionData {
+    func transactionData(tradeData: TradeData) throws -> TransactionData {
         try tradeManager.transactionData(tradeData: tradeData)
     }
-
 }
 
-extension Kit {
-
-    public static func instance(evmKit: EvmKit.Kit) throws -> Kit {
+public extension Kit {
+    static func instance(evmKit: EvmKit.Kit) throws -> Kit {
         let address = evmKit.address
 
         let tradeManager = try TradeManager(evmKit: evmKit, address: address)
@@ -107,35 +103,32 @@ extension Kit {
         return uniswapKit
     }
 
-    public static func addDecorators(to evmKit: EvmKit.Kit) {
+    static func addDecorators(to evmKit: EvmKit.Kit) {
         evmKit.add(methodDecorator: SwapMethodDecorator(contractMethodFactories: SwapContractMethodFactories.shared))
         evmKit.add(transactionDecorator: SwapTransactionDecorator())
     }
-
 }
 
-extension Kit {
-
-    public enum FractionError: Error {
+public extension Kit {
+    enum FractionError: Error {
         case negativeDecimal
         case invalidSignificand(value: String)
     }
 
-    public enum TradeError: Error {
+    enum TradeError: Error {
         case zeroAmount
         case tradeNotFound
         case invalidTokensForSwap
     }
 
-    public enum PairError: Error {
+    enum PairError: Error {
         case notInvolvedToken
         case insufficientReserves
         case insufficientReserveOut
     }
 
-    public enum RouteError: Error {
+    enum RouteError: Error {
         case emptyPairs
         case invalidPair(index: Int)
     }
-
 }

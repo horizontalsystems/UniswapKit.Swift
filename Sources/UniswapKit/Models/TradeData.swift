@@ -1,5 +1,5 @@
-import Foundation
 import BigInt
+import Foundation
 
 public class TradeData {
     let trade: Trade
@@ -19,48 +19,46 @@ public class TradeData {
         let amountOutMin = ((Fraction(numerator: 1) + options.slippageFraction).inverted * Fraction(numerator: trade.tokenAmountOut.rawAmount)).quotient
         return TokenAmount(token: trade.tokenAmountOut.token, rawAmount: amountOutMin)
     }
-
 }
 
-extension TradeData {
-
-    public var type: TradeType {
+public extension TradeData {
+    var type: TradeType {
         trade.type
     }
 
-    public var amountIn: Decimal? {
+    var amountIn: Decimal? {
         trade.tokenAmountIn.decimalAmount
     }
 
-    public var amountOut: Decimal? {
+    var amountOut: Decimal? {
         trade.tokenAmountOut.decimalAmount
     }
 
-    public var amountInMax: Decimal? {
+    var amountInMax: Decimal? {
         tokenAmountInMax.decimalAmount
     }
 
-    public var amountOutMin: Decimal? {
+    var amountOutMin: Decimal? {
         tokenAmountOutMin.decimalAmount
     }
 
-    public var executionPrice: Decimal? {
+    var executionPrice: Decimal? {
         trade.executionPrice.decimalValue
     }
 
-    public var executionPriceInverted: Decimal? {
+    var executionPriceInverted: Decimal? {
         trade.executionPrice.invertedPrice.decimalValue
     }
 
-    public var midPrice: Decimal? {
+    var midPrice: Decimal? {
         trade.route.midPrice.decimalValue
     }
 
-    public var priceImpact: Decimal? {
+    var priceImpact: Decimal? {
         trade.priceImpact.toDecimal(decimals: 2)
     }
 
-    public var providerFee: Decimal? {
+    var providerFee: Decimal? {
         guard let amountIn = type == .exactIn ? trade.tokenAmountIn.decimalAmount : tokenAmountInMax.decimalAmount else {
             return nil
         }
@@ -68,8 +66,7 @@ extension TradeData {
         return trade.liquidityProviderFee.toDecimal(decimals: trade.tokenAmountIn.token.decimals).map { $0 * amountIn }
     }
 
-    public var path: [Token] {
+    var path: [Token] {
         trade.route.path
     }
-
 }

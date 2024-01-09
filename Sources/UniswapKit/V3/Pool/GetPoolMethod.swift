@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class GetPoolMethod: ContractMethod {
     static let methodSignature = "getPool(address,address,uint24)"
@@ -22,5 +22,4 @@ class GetPoolMethod: ContractMethod {
     override var arguments: [Any] {
         [token0, token1, fee]
     }
-
 }

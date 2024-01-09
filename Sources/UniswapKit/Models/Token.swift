@@ -6,15 +6,15 @@ public enum Token {
 
     public var address: Address {
         switch self {
-        case .eth(let wethAddress): return wethAddress
-        case .erc20(let address, _): return address
+        case let .eth(wethAddress): return wethAddress
+        case let .erc20(address, _): return address
         }
     }
 
     var decimals: Int {
         switch self {
         case .eth: return 18
-        case .erc20(_, let decimals): return decimals
+        case let .erc20(_, decimals): return decimals
         }
     }
 
@@ -28,28 +28,23 @@ public enum Token {
         default: return false
         }
     }
-
 }
 
 extension Token: Equatable {
-
-    public static func ==(lhs: Token, rhs: Token) -> Bool {
+    public static func == (lhs: Token, rhs: Token) -> Bool {
         switch (lhs, rhs) {
-        case (.eth(let lhsWethAddress), .eth(let rhsWethAddress)): return lhsWethAddress == rhsWethAddress
-        case (.erc20(let lhsAddress, let lhsDecimals), .erc20(let rhsAddress, let rhsDecimals)): return lhsAddress == rhsAddress && lhsDecimals == rhsDecimals
+        case let (.eth(lhsWethAddress), .eth(rhsWethAddress)): return lhsWethAddress == rhsWethAddress
+        case let (.erc20(lhsAddress, lhsDecimals), .erc20(rhsAddress, rhsDecimals)): return lhsAddress == rhsAddress && lhsDecimals == rhsDecimals
         default: return false
         }
     }
-
 }
 
 extension Token: CustomStringConvertible {
-
     public var description: String {
         switch self {
         case .eth: return "[ETH]"
-        case .erc20(let address, _): return "[ERC20: \(address)]"
+        case let .erc20(address, _): return "[ERC20: \(address)]"
         }
     }
-
 }

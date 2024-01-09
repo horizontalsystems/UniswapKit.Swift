@@ -36,13 +36,12 @@ struct Route {
 
         for (index, pair) in pairs.enumerated() {
             let price = path[index] == pair.token0 ?
-                    Price(baseTokenAmount: pair.reserve0, quoteTokenAmount: pair.reserve1) :
-                    Price(baseTokenAmount: pair.reserve1, quoteTokenAmount: pair.reserve0)
+                Price(baseTokenAmount: pair.reserve0, quoteTokenAmount: pair.reserve1) :
+                Price(baseTokenAmount: pair.reserve1, quoteTokenAmount: pair.reserve0)
 
             prices.append(price)
         }
 
         midPrice = prices.dropFirst().reduce(prices[0]) { $0 * $1 }
     }
-
 }

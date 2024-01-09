@@ -14,11 +14,9 @@ class TokenFactory {
     func token(contractAddress: Address, decimals: Int) -> Token {
         .erc20(address: contractAddress, decimals: decimals)
     }
-
 }
 
 extension TokenFactory {
-
     private static func wethAddress(chain: Chain) throws -> Address {
         let wethAddressHex: String
 
@@ -41,5 +39,4 @@ extension TokenFactory {
     enum UnsupportedChainError: Error {
         case noWethAddress
     }
-
 }

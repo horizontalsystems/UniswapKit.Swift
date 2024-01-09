@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class UnwrapWeth9Method: ContractMethod {
     static let methodSignature = "unwrapWETH9(uint256,address)"
@@ -20,5 +20,4 @@ class UnwrapWeth9Method: ContractMethod {
     override var arguments: [Any] {
         [amountMinimum, recipient]
     }
-
 }

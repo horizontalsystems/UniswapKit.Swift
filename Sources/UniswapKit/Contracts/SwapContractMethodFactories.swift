@@ -17,5 +17,4 @@ class SwapContractMethodFactories: ContractMethodFactories {
             SwapExactTokensForTokensMethodSupportingFeeOnTransferFactory(),
         ])
     }
-
 }

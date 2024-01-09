@@ -14,5 +14,4 @@ class PairSelector {
             return [(tokenA, tokenB), (tokenA, etherToken), (tokenB, etherToken)]
         }
     }
-
 }

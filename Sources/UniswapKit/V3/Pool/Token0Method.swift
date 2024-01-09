@@ -1,6 +1,6 @@
-import Foundation
-import EvmKit
 import BigInt
+import EvmKit
+import Foundation
 
 class Token0Method: ContractMethod {
     static let methodSignature = "token0()"
@@ -10,5 +10,4 @@ class Token0Method: ContractMethod {
     override var arguments: [Any] {
         []
     }
-
 }

@@ -1,6 +1,6 @@
-import Foundation
 import BigInt
 import EvmKit
+import Foundation
 
 class QuoteExactOutputMethod: ContractMethod {
     static let methodSignature = "quoteExactOutput(bytes,uint256)"
@@ -20,5 +20,4 @@ class QuoteExactOutputMethod: ContractMethod {
     override var arguments: [Any] {
         [swapPath.abiEncodePacked, amountOut]
     }
-
 }

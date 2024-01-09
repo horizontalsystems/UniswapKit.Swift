@@ -29,12 +29,10 @@ struct Trade {
     private static func computeLiquidityProviderFee(pairCount: Int) -> Fraction {
         Fraction(numerator: 1) - Fraction(numerator: BigUInt(997).power(pairCount), denominator: BigUInt(1000).power(pairCount))
     }
-
 }
 
 extension Trade: Comparable {
-
-    public static func <(lhs: Trade, rhs: Trade) -> Bool {
+    public static func < (lhs: Trade, rhs: Trade) -> Bool {
         if lhs.tokenAmountOut != rhs.tokenAmountOut {
             return lhs.tokenAmountOut > rhs.tokenAmountOut
         }
@@ -50,19 +48,16 @@ extension Trade: Comparable {
         return lhs.route.path.count < rhs.route.path.count
     }
 
-    public static func ==(lhs: Trade, rhs: Trade) -> Bool {
+    public static func == (lhs: Trade, rhs: Trade) -> Bool {
         lhs.tokenAmountOut == rhs.tokenAmountOut &&
-                lhs.tokenAmountIn == rhs.tokenAmountIn &&
-                lhs.priceImpact == rhs.priceImpact &&
-                lhs.route.path.count == rhs.route.path.count
+            lhs.tokenAmountIn == rhs.tokenAmountIn &&
+            lhs.priceImpact == rhs.priceImpact &&
+            lhs.route.path.count == rhs.route.path.count
     }
-
 }
 
 extension Trade: CustomStringConvertible {
-
     public var description: String {
         "\n[type: \(type);\npath: \(route.path);\ntokenAmountIn: \(tokenAmountIn);\ntokenAmountOut: \(tokenAmountOut);\nexecutionPrice: \(executionPrice);\npriceImpact: \(priceImpact.toDecimal(decimals: 2)?.description ?? "nil")]"
     }
-
 }
