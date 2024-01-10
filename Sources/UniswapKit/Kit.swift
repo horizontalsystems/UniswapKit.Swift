@@ -1,6 +1,7 @@
 import BigInt
 import EvmKit
 import Foundation
+import HsToolKit
 
 public class Kit {
     private let tradeManager: TradeManager
@@ -15,24 +16,26 @@ public class Kit {
 }
 
 public extension Kit {
-    var routerAddress: Address {
-        tradeManager.routerAddress
+    func routerAddress(chain: Chain) throws -> Address {
+        try TradeManager.routerAddress(chain: chain)
     }
 
-    var etherToken: Token {
-        tokenFactory.etherToken
+    func etherToken(chain: Chain) throws -> Token {
+        try tokenFactory.etherToken(chain: chain)
     }
 
     func token(contractAddress: Address, decimals: Int) -> Token {
         tokenFactory.token(contractAddress: contractAddress, decimals: decimals)
     }
 
-    func swapData(tokenIn: Token, tokenOut: Token) async throws -> SwapData {
-        let tokenPairs = pairSelector.tokenPairs(tokenA: tokenIn, tokenB: tokenOut)
+    func swapData(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token) async throws -> SwapData {
+        let tokenPairs = try pairSelector.tokenPairs(chain: chain, tokenA: tokenIn, tokenB: tokenOut)
 
         let pairs = try await withThrowingTaskGroup(of: Pair.self) { taskGroup in
             tokenPairs.forEach { token, token2 in
-                taskGroup.addTask { try await self.tradeManager.pair(tokenA: token, tokenB: token2) }
+                taskGroup.addTask {
+                    try await self.tradeManager.pair(rpcSource: rpcSource, chain: chain, tokenA: token, tokenB: token2)
+                }
             }
 
             return try await taskGroup.reduce(into: [Pair]()) { result, pair in
@@ -85,17 +88,16 @@ public extension Kit {
         return TradeData(trade: bestTrade, options: options)
     }
 
-    func transactionData(tradeData: TradeData) throws -> TransactionData {
-        try tradeManager.transactionData(tradeData: tradeData)
+    func transactionData(receiveAddress: Address, chain: Chain, tradeData: TradeData) throws -> TransactionData {
+        try tradeManager.transactionData(receiveAddress: receiveAddress, chain: chain, tradeData: tradeData)
     }
 }
 
 public extension Kit {
-    static func instance(evmKit: EvmKit.Kit) throws -> Kit {
-        let address = evmKit.address
-
-        let tradeManager = try TradeManager(evmKit: evmKit, address: address)
-        let tokenFactory = try TokenFactory(chain: evmKit.chain)
+    static func instance() throws -> Kit {
+        let networkManager = NetworkManager()
+        let tradeManager = TradeManager(networkManager: networkManager)
+        let tokenFactory = TokenFactory()
         let pairSelector = PairSelector(tokenFactory: tokenFactory)
 
         let uniswapKit = Kit(tradeManager: tradeManager, pairSelector: pairSelector, tokenFactory: tokenFactory)

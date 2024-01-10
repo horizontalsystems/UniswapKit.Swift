@@ -5,19 +5,17 @@ import Foundation
 import HsToolKit
 
 public class QuoterV2 {
-    private let quoterAddress: Address
-    private let evmKit: EvmKit.Kit
+    private let networkManager: NetworkManager
     private let tokenFactory: TokenFactory
     private let dexType: DexType
 
     private let fees: [KitV3.FeeAmount]
 
-    init(evmKit: EvmKit.Kit, tokenFactory: TokenFactory, dexType: DexType) {
-        self.evmKit = evmKit
+    init(networkManager: NetworkManager, tokenFactory: TokenFactory, dexType: DexType) {
+        self.networkManager = networkManager
         self.tokenFactory = tokenFactory
         self.dexType = dexType
 
-        quoterAddress = dexType.quoterAddress(chain: evmKit.chain)
         fees = KitV3.FeeAmount.sorted(dexType: dexType)
     }
 
@@ -35,7 +33,7 @@ public class QuoterV2 {
         return price
     }
 
-    private func quoteExact(tradeType: TradeType, tokenIn: Address, tokenOut: Address, amount: BigUInt, fee: KitV3.FeeAmount) async throws -> QuoteExactSingleResponse {
+    private func quoteExact(rpcSource: RpcSource, chain: Chain, tradeType: TradeType, tokenIn: Address, tokenOut: Address, amount: BigUInt, fee: KitV3.FeeAmount) async throws -> QuoteExactSingleResponse {
         let method = tradeType == .exactIn ?
             QuoteExactInputSingleMethod(
                 tokenIn: tokenIn,
@@ -53,7 +51,7 @@ public class QuoterV2 {
             )
 
         do {
-            let data = try await call(data: method.encodedABI())
+            let data = try await call(rpcSource: rpcSource, chain: chain, data: method.encodedABI())
             guard let response = QuoteExactSingleResponse(data: data) else {
                 throw KitV3.TradeError.tradeNotFound
             }
@@ -68,12 +66,12 @@ public class QuoterV2 {
         }
     }
 
-    private func quote(swapPath: SwapPath, tradeType: TradeType, amount: BigUInt) async throws -> BigUInt {
+    private func quote(rpcSource: RpcSource, chain: Chain, swapPath: SwapPath, tradeType: TradeType, amount: BigUInt) async throws -> BigUInt {
         let method = tradeType == .exactIn ?
             QuoteExactInputMethod(swapPath: swapPath, amountIn: amount) :
             QuoteExactOutputMethod(swapPath: swapPath, amountOut: amount)
 
-        let data = try await call(data: method.encodedABI())
+        let data = try await call(rpcSource: rpcSource, chain: chain, data: method.encodedABI())
         guard data.count >= 32 else {
             throw KitV3.TradeError.tradeNotFound
         }
@@ -81,12 +79,14 @@ public class QuoterV2 {
         return BigUInt(data[0 ... 31])
     }
 
-    private func bestTradeExact(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse) {
+    private func bestTradeExact(rpcSource: RpcSource, chain: Chain, tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse) {
         // check all fees and found the best amount for trade.
         var bestTrade: (fee: KitV3.FeeAmount, response: QuoteExactSingleResponse)?
         for fee in fees {
             do {
                 let response = try await quoteExact(
+                    rpcSource: rpcSource,
+                    chain: chain,
                     tradeType: tradeType,
                     tokenIn: tokenIn.address,
                     tokenOut: tokenOut.address,
@@ -114,10 +114,10 @@ public class QuoterV2 {
         return bestTrade
     }
 
-    private func bestTradeSingleIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
-        let bestTradeOut = try await bestTradeExact(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
+    private func bestTradeSingleIn(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
+        let bestTradeOut = try await bestTradeExact(rpcSource: rpcSource, chain: chain, tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
 
-        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeOut.fee, dexType: dexType)
+        let pool = try await Pool(networkManager: networkManager, rpcSource: rpcSource, chain: chain, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeOut.fee, dexType: dexType)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
         let slotPrice = correctedX96Price(
             sqrtPriceX96: sqrtPriceX96,
@@ -129,10 +129,10 @@ public class QuoterV2 {
         return TradeV3(tradeType: .exactIn, swapPath: swapPath, amountIn: amountIn, amountOut: bestTradeOut.response.amount, tokenIn: tokenIn, tokenOut: tokenOut, slotPrices: slotPrice.map { [$0] } ?? [])
     }
 
-    private func bestTradeSingleOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
-        let bestTradeIn = try await bestTradeExact(tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
+    private func bestTradeSingleOut(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
+        let bestTradeIn = try await bestTradeExact(rpcSource: rpcSource, chain: chain, tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
 
-        let pool = try await Pool(evmKit: evmKit, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeIn.fee, dexType: dexType)
+        let pool = try await Pool(networkManager: networkManager, rpcSource: rpcSource, chain: chain, token0: tokenIn.address, token1: tokenOut.address, fee: bestTradeIn.fee, dexType: dexType)
         let sqrtPriceX96 = try await pool.slot0().sqrtPriceX96
         let slotPrice = correctedX96Price(
             sqrtPriceX96: sqrtPriceX96,
@@ -144,37 +144,37 @@ public class QuoterV2 {
         return TradeV3(tradeType: .exactOut, swapPath: swapPath, amountIn: bestTradeIn.response.amount, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut, slotPrices: slotPrice.map { [$0] } ?? [])
     }
 
-    private func bestTradeMultihopIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
-        let weth = tokenFactory.etherToken
+    private func bestTradeMultihopIn(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
+        let weth = try tokenFactory.etherToken(chain: chain)
 
-        let trade1 = try await bestTradeSingleIn(tokenIn: tokenIn, tokenOut: weth, amountIn: amountIn)
-        let trade2 = try await bestTradeSingleIn(tokenIn: weth, tokenOut: tokenOut, amountIn: trade1.tokenAmountOut.rawAmount)
+        let trade1 = try await bestTradeSingleIn(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: weth, amountIn: amountIn)
+        let trade2 = try await bestTradeSingleIn(rpcSource: rpcSource, chain: chain, tokenIn: weth, tokenOut: tokenOut, amountIn: trade1.tokenAmountOut.rawAmount)
 
         let path = SwapPath(trade1.swapPath.items + trade2.swapPath.items)
-        let amountOut = try await quote(swapPath: path, tradeType: .exactIn, amount: amountIn)
+        let amountOut = try await quote(rpcSource: rpcSource, chain: chain, swapPath: path, tradeType: .exactIn, amount: amountIn)
 
         let slotPrices = [trade1.slotPrices.first, trade2.slotPrices.first].compactMap { $0 }
         return TradeV3(tradeType: .exactIn, swapPath: path, amountIn: amountIn, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut, slotPrices: slotPrices)
     }
 
-    private func bestTradeMultihopOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
-        let weth = tokenFactory.etherToken
+    private func bestTradeMultihopOut(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
+        let weth = try tokenFactory.etherToken(chain: chain)
 
-        let trade1 = try await bestTradeSingleOut(tokenIn: weth, tokenOut: tokenOut, amountOut: amountOut)
-        let trade2 = try await bestTradeSingleOut(tokenIn: tokenIn, tokenOut: weth, amountOut: trade1.tokenAmountIn.rawAmount)
+        let trade1 = try await bestTradeSingleOut(rpcSource: rpcSource, chain: chain, tokenIn: weth, tokenOut: tokenOut, amountOut: amountOut)
+        let trade2 = try await bestTradeSingleOut(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: weth, amountOut: trade1.tokenAmountIn.rawAmount)
 
         let path = SwapPath(trade1.swapPath.items + trade2.swapPath.items)
-        let amountIn = try await quote(swapPath: path, tradeType: .exactOut, amount: amountOut)
+        let amountIn = try await quote(rpcSource: rpcSource, chain: chain, swapPath: path, tradeType: .exactOut, amount: amountOut)
 
         let slotPrices = [trade1.slotPrices.first, trade2.slotPrices.first].compactMap { $0 }
         return TradeV3(tradeType: .exactIn, swapPath: path, amountIn: amountIn, amountOut: amountOut, tokenIn: tokenIn, tokenOut: tokenOut, slotPrices: slotPrices)
     }
 
-    func bestTrade(tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> TradeV3 {
+    func bestTrade(rpcSource: RpcSource, chain: Chain, tradeType: TradeType, tokenIn: Token, tokenOut: Token, amount: BigUInt) async throws -> TradeV3 {
         do {
             switch tradeType {
-            case .exactIn: return try await bestTradeSingleIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
-            case .exactOut: return try await bestTradeSingleOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
+            case .exactIn: return try await bestTradeSingleIn(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
+            case .exactOut: return try await bestTradeSingleOut(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
             }
         } catch {
             guard case .tradeNotFound = error as? KitV3.TradeError else { // ignore 'not found' error, try found other trade
@@ -183,17 +183,18 @@ public class QuoterV2 {
         }
         do {
             switch tradeType {
-            case .exactIn: return try await bestTradeMultihopIn(tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
-            case .exactOut: return try await bestTradeMultihopOut(tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
+            case .exactIn: return try await bestTradeMultihopIn(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: tokenOut, amountIn: amount)
+            case .exactOut: return try await bestTradeMultihopOut(rpcSource: rpcSource, chain: chain, tokenIn: tokenIn, tokenOut: tokenOut, amountOut: amount)
             }
         } catch {
             throw error
         }
     }
 
-    private func call(data: Data) async throws -> Data {
+    private func call(rpcSource: RpcSource, chain: Chain, data: Data) async throws -> Data {
         do {
-            let a = try await evmKit.fetchCall(contractAddress: quoterAddress, data: data)
+            let quoterAddress = dexType.quoterAddress(chain: chain)
+            let a = try await EvmKit.Kit.call(networkManager: networkManager, rpcSource: rpcSource, contractAddress: quoterAddress, data: data)
             return a
         } catch {
             throw error
@@ -202,11 +203,11 @@ public class QuoterV2 {
 }
 
 extension QuoterV2 {
-    func bestTradeExactIn(tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
-        try await bestTrade(tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
+    func bestTradeExactIn(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountIn: BigUInt) async throws -> TradeV3 {
+        try await bestTrade(rpcSource: rpcSource, chain: chain, tradeType: .exactIn, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountIn)
     }
 
-    func bestTradeExactOut(tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
-        try await bestTrade(tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
+    func bestTradeExactOut(rpcSource: RpcSource, chain: Chain, tokenIn: Token, tokenOut: Token, amountOut: BigUInt) async throws -> TradeV3 {
+        try await bestTrade(rpcSource: rpcSource, chain: chain, tradeType: .exactOut, tokenIn: tokenIn, tokenOut: tokenOut, amount: amountOut)
     }
 }

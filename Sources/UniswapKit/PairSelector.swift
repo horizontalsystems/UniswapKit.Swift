@@ -1,3 +1,5 @@
+import EvmKit
+
 class PairSelector {
     private let tokenFactory: TokenFactory
 
@@ -5,11 +7,11 @@ class PairSelector {
         self.tokenFactory = tokenFactory
     }
 
-    func tokenPairs(tokenA: Token, tokenB: Token) -> [(Token, Token)] {
+    func tokenPairs(chain: Chain, tokenA: Token, tokenB: Token) throws -> [(Token, Token)] {
         if tokenA.isEther || tokenB.isEther {
             return [(tokenA, tokenB)]
         } else {
-            let etherToken = tokenFactory.etherToken
+            let etherToken = try tokenFactory.etherToken(chain: chain)
 
             return [(tokenA, tokenB), (tokenA, etherToken), (tokenB, etherToken)]
         }

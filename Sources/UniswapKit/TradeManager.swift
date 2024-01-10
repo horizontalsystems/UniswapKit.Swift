@@ -2,32 +2,23 @@ import BigInt
 import EvmKit
 import Foundation
 import HsCryptoKit
+import HsToolKit
 
 class TradeManager {
-    public let routerAddress: Address
-    private let factoryAddressString: String
-    private let initCodeHashString: String
+    private let networkManager: NetworkManager
 
-    private let evmKit: EvmKit.Kit
-    private let address: Address
-
-    init(evmKit: EvmKit.Kit, address: Address) throws {
-        routerAddress = try Self.routerAddress(chain: evmKit.chain)
-        factoryAddressString = try Self.factoryAddressString(chain: evmKit.chain)
-        initCodeHashString = try Self.initCodeHashString(chain: evmKit.chain)
-
-        self.evmKit = evmKit
-        self.address = address
+    init(networkManager: NetworkManager) {
+        self.networkManager = networkManager
     }
 
-    private func buildSwapData(tradeData: TradeData) throws -> SwapData {
+    private func buildSwapData(receiveAddress: Address, tradeData: TradeData) throws -> SwapData {
         let trade = tradeData.trade
 
         let tokenIn = trade.tokenAmountIn.token
         let tokenOut = trade.tokenAmountOut.token
 
         let path = trade.route.path.map(\.address)
-        let to = tradeData.options.recipient ?? address
+        let to = tradeData.options.recipient ?? receiveAddress
         let deadline = BigUInt(Date().timeIntervalSince1970 + tradeData.options.ttl)
 
         let method: ContractMethod
@@ -84,14 +75,18 @@ class TradeManager {
 }
 
 extension TradeManager {
-    func pair(tokenA: Token, tokenB: Token) async throws -> Pair {
+    func pair(rpcSource: RpcSource, chain: Chain, tokenA: Token, tokenB: Token) async throws -> Pair {
         let (token0, token1) = tokenA.sortsBefore(token: tokenB) ? (tokenA, tokenB) : (tokenB, tokenA)
 
-        let pairAddress = Pair.address(token0: token0, token1: token1, factoryAddressString: factoryAddressString, initCodeHashString: initCodeHashString)
+        let pairAddress = try Pair.address(
+            token0: token0, token1: token1,
+            factoryAddressString: Self.factoryAddressString(chain: chain),
+            initCodeHashString: Self.initCodeHashString(chain: chain)
+        )
 
 //        print("PAIR ADDRESS: \(pairAddress.toHexString())")
 
-        let data = try await evmKit.fetchCall(contractAddress: pairAddress, data: GetReservesMethod().encodedABI())
+        let data = try await EvmKit.Kit.call(networkManager: networkManager, rpcSource: rpcSource, contractAddress: pairAddress, data: GetReservesMethod().encodedABI())
 //        print("DATA: \(data.toHexString())")
 
         var rawReserve0: BigUInt = 0
@@ -110,11 +105,11 @@ extension TradeManager {
         return Pair(reserve0: reserve0, reserve1: reserve1)
     }
 
-    func transactionData(tradeData: TradeData) throws -> TransactionData {
-        let swapData = try buildSwapData(tradeData: tradeData)
+    func transactionData(receiveAddress: Address, chain: Chain, tradeData: TradeData) throws -> TransactionData {
+        let swapData = try buildSwapData(receiveAddress: receiveAddress, tradeData: tradeData)
 
-        return TransactionData(
-            to: routerAddress,
+        return try TransactionData(
+            to: Self.routerAddress(chain: chain),
             value: swapData.amount,
             input: swapData.input
         )
@@ -221,7 +216,7 @@ extension TradeManager {
         return trades
     }
 
-    private static func routerAddress(chain: Chain) throws -> Address {
+    static func routerAddress(chain: Chain) throws -> Address {
         switch chain {
         case .ethereum, .ethereumRopsten, .ethereumRinkeby, .ethereumKovan, .ethereumGoerli: return try Address(hex: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D")
         case .binanceSmartChain: return try Address(hex: "0x10ED43C718714eb63d5aA57B78B54704E256024E")
