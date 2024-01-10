@@ -1,14 +1,8 @@
 import EvmKit
 
 class TokenFactory {
-    private let wethAddress: Address
-
-    init(chain: Chain) throws {
-        wethAddress = try TokenFactory.wethAddress(chain: chain)
-    }
-
-    var etherToken: Token {
-        .eth(wethAddress: wethAddress)
+    func etherToken(chain: Chain) throws -> Token {
+        try .eth(wethAddress: Self.wethAddress(chain: chain))
     }
 
     func token(contractAddress: Address, decimals: Int) -> Token {

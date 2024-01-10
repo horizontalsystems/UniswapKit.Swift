@@ -21,7 +21,7 @@ class SwapController: UIViewController {
 
     private var state: State = .idle
 
-    private let uniswapKit = try! UniswapKit.KitV3.instance(evmKit: Manager.shared.evmKit)
+    private let uniswapKit = try! UniswapKit.KitV3.instance(dexType: .pancakeSwap)
 
     private let fromButton = UIButton()
     private let fromTextField = UITextField()
@@ -259,6 +259,8 @@ class SwapController: UIViewController {
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactIn(
+                        rpcSource: RpcSource.bscRpcHttp(),
+                        chain: .binanceSmartChain,
                         tokenIn: token(fromToken),
                         tokenOut: token(toToken),
                         amountIn: amount,
@@ -274,6 +276,8 @@ class SwapController: UIViewController {
 
                     exactAmount = amountBigUInt
                     bestTrade = try await uniswapKit.bestTradeExactOut(
+                        rpcSource: RpcSource.bscRpcHttp(),
+                        chain: .binanceSmartChain,
                         tokenIn: token(fromToken),
                         tokenOut: token(toToken),
                         amountOut: amount,
@@ -299,7 +303,7 @@ class SwapController: UIViewController {
         Task {
             do {
                 let eip20Kit = try Eip20Kit.Kit.instance(evmKit: Manager.shared.evmKit, contractAddress: token.address)
-                let allowance = try await eip20Kit.allowance(spenderAddress: uniswapKit.routerAddress)
+                let allowance = try await eip20Kit.allowance(spenderAddress: uniswapKit.routerAddress(chain: .binanceSmartChain))
                 sync(allowance: allowance)
             } catch {
                 sync(allowance: nil)
@@ -320,7 +324,7 @@ class SwapController: UIViewController {
             show(error: "Can't create Eip20 Kit for token!")
             return
         }
-        let transactionData = eip20Kit.approveTransactionData(spenderAddress: uniswapKit.routerAddress, amount: amountIn)
+        let transactionData = eip20Kit.approveTransactionData(spenderAddress: uniswapKit.routerAddress(chain: .binanceSmartChain), amount: amountIn)
 
         let gasPrice = gasPrice
 
@@ -360,6 +364,8 @@ class SwapController: UIViewController {
 
         do {
             let transactionData = try uniswapKit.transactionData(
+                receiveAddress: Manager.shared.evmKit.receiveAddress,
+                chain: .binanceSmartChain,
                 bestTrade: bestTrade,
                 tradeOptions: tradeOptions
             )
@@ -444,7 +450,7 @@ extension SwapController {
 extension SwapController {
     func token(_ erc20Token: Erc20Token) -> Token {
         guard let contractAddress = erc20Token.contractAddress else {
-            return uniswapKit.etherToken
+            return try! uniswapKit.etherToken(chain: .binanceSmartChain)
         }
 
         return .erc20(address: contractAddress, decimals: erc20Token.decimals)

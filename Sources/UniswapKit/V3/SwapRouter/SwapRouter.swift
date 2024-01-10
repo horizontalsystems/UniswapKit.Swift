@@ -3,13 +3,10 @@ import EvmKit
 import Foundation
 
 class SwapRouter {
-    let routerAddress: Address
-    private let evmKit: EvmKit.Kit
+    private let dexType: DexType
 
-    init(evmKit: EvmKit.Kit, dexType: DexType) {
-        self.evmKit = evmKit
-
-        routerAddress = dexType.routerAddress(chain: evmKit.chain)
+    init(dexType: DexType) {
+        self.dexType = dexType
     }
 
     private func buildMethodForExact(
@@ -63,10 +60,12 @@ class SwapRouter {
 
 extension SwapRouter {
     func transactionData(
+        receiveAddress: Address,
+        chain: Chain,
         tradeData: TradeDataV3,
         tradeOptions: TradeOptions
     ) -> TransactionData {
-        let recipient = tradeOptions.recipient ?? evmKit.receiveAddress
+        let recipient = tradeOptions.recipient ?? receiveAddress
 //        let deadline = BigUInt(Date().timeIntervalSince1970 + tradeOptions.ttl)
 
         // if you try to swap erc20 -> ETH, recipient will be zeros.
@@ -90,6 +89,6 @@ extension SwapRouter {
 
         let resultMethod = (methods.count > 1) ? MulticallMethod(methods: methods) : swapMethod
 
-        return TransactionData(to: routerAddress, value: ethValue, input: resultMethod.encodedABI())
+        return TransactionData(to: dexType.routerAddress(chain: chain), value: ethValue, input: resultMethod.encodedABI())
     }
 }
