@@ -24,9 +24,11 @@ public class SwapDecoration: TransactionDecoration {
     }
 
     private func tag(token: Token, type: TransactionTag.TagType) -> TransactionTag {
+        let addresses = recipient.map { [$0.hex] } ?? []
+
         switch token {
-        case .evmCoin: return TransactionTag(type: type, protocol: .native)
-        case let .eip20Coin(tokenAddress, _): return TransactionTag(type: type, protocol: .eip20, contractAddress: tokenAddress)
+        case .evmCoin: return TransactionTag(type: type, protocol: .native, addresses: addresses)
+        case let .eip20Coin(tokenAddress, _): return TransactionTag(type: type, protocol: .eip20, contractAddress: tokenAddress, addresses: addresses)
         }
     }
 

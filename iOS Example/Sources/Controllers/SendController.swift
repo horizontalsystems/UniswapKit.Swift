@@ -116,18 +116,6 @@ class SendController: UIViewController {
         sendButton.setTitle("Send", for: .normal)
         sendButton.addTarget(self, action: #selector(send), for: .touchUpInside)
 
-        feeHistoryProvider.feeHistoryPublisher(blocksCount: 2, rewardPercentile: [50])
-            .receive(on: DispatchQueue.main)
-            .sink(receiveCompletion: { completion in
-                switch completion {
-                case let .failure(error): print("FeeHistoryError: \(error)")
-                case .finished: ()
-                }
-            }, receiveValue: { [weak self] history in
-                self?.handle(feeHistory: history)
-            })
-            .store(in: &cancellables)
-
         addressTextField.addTarget(self, action: #selector(updateEstimatedGasPrice), for: .editingChanged)
         amountTextField.addTarget(self, action: #selector(updateEstimatedGasPrice), for: .editingChanged)
 
