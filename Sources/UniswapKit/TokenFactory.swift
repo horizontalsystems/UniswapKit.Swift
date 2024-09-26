@@ -24,6 +24,7 @@ extension TokenFactory {
         case .ethereumKovan: wethAddressHex = "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
         case .ethereumGoerli: wethAddressHex = "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6"
         case .arbitrumOne: wethAddressHex = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+        case .base: wethAddressHex = "0x4200000000000000000000000000000000000006"
         default: throw UnsupportedChainError.noWethAddress
         }
 
