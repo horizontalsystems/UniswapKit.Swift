@@ -193,7 +193,7 @@ public class QuoterV2 {
 
     private func call(rpcSource: RpcSource, chain: Chain, data: Data) async throws -> Data {
         do {
-            let quoterAddress = dexType.quoterAddress(chain: chain)
+            let quoterAddress = try dexType.quoterAddress(chain: chain)
             let a = try await EvmKit.Kit.call(networkManager: networkManager, rpcSource: rpcSource, contractAddress: quoterAddress, data: data)
             return a
         } catch {

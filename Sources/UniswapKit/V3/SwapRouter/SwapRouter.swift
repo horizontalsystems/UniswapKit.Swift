@@ -64,7 +64,7 @@ extension SwapRouter {
         chain: Chain,
         tradeData: TradeDataV3,
         tradeOptions: TradeOptions
-    ) -> TransactionData {
+    ) throws -> TransactionData {
         let recipient = tradeOptions.recipient ?? receiveAddress
 //        let deadline = BigUInt(Date().timeIntervalSince1970 + tradeOptions.ttl)
 
@@ -89,6 +89,6 @@ extension SwapRouter {
 
         let resultMethod = (methods.count > 1) ? MulticallMethod(methods: methods) : swapMethod
 
-        return TransactionData(to: dexType.routerAddress(chain: chain), value: ethValue, input: resultMethod.encodedABI())
+        return TransactionData(to: try dexType.routerAddress(chain: chain), value: ethValue, input: resultMethod.encodedABI())
     }
 }
