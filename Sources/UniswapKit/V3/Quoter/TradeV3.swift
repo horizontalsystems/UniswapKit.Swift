@@ -30,7 +30,7 @@ public extension TradeV3 {
         var slotPrice: Decimal?
         if !slotPrices.isEmpty {
             var result: Decimal = 1
-            slotPrices.forEach { decimal in
+            for decimal in slotPrices {
                 result *= decimal
             }
             slotPrice = result

@@ -106,7 +106,7 @@ class SwapController: UIViewController {
 
         var lastView = toTextFieldWrapper
         let labels = [allowanceLabel, maximumSoldLabel, executionPriceLabel, midPriceLabel, providerFeeLabel, pathLabel]
-        labels.enumerated().forEach { index, label in
+        for (index, label) in labels.enumerated() {
             lastView.addSubview(label)
             label.snp.makeConstraints { make in
                 make.leading.equalToSuperview().inset(16)

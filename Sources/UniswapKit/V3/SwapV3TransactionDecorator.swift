@@ -30,7 +30,7 @@ class SwapV3TransactionDecorator {
 
     private func totalETHIncoming(userAddress: Address, transactions: [InternalTransaction]) -> BigUInt {
         var amountOut: BigUInt = 0
-        transactions.forEach { transaction in
+        for transaction in transactions {
             if transaction.to == userAddress {
                 amountOut += transaction.value
             }

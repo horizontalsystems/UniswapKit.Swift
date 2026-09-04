@@ -32,7 +32,7 @@ public extension Kit {
         let tokenPairs = try pairSelector.tokenPairs(chain: chain, tokenA: tokenIn, tokenB: tokenOut)
 
         let pairs = try await withThrowingTaskGroup(of: Pair.self) { taskGroup in
-            tokenPairs.forEach { token, token2 in
+            for (token, token2) in tokenPairs {
                 taskGroup.addTask {
                     try await self.tradeManager.pair(rpcSource: rpcSource, chain: chain, tokenA: token, tokenB: token2)
                 }

@@ -90,7 +90,7 @@ public enum DexType {
             default:
                 throw AddressError.invalidRouterAddress
             }
-      }
+        }
     }
 }
 

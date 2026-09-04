@@ -28,7 +28,7 @@ extension SwapPath {
 
         result += token1.raw
 
-        items.forEach { item in
+        for item in items {
             result += encodeUnit24(value: item.fee.rawValue) + item.token2.raw
         }
 
