@@ -26,6 +26,7 @@ extension TokenFactory {
         case .arbitrumOne: wethAddressHex = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
         case .base: wethAddressHex = "0x4200000000000000000000000000000000000006"
         case .zkSync: wethAddressHex = "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91"
+        case .robinhood: wethAddressHex = "0x0bd7d308f8e1639fab988df18a8011f41eacad73"
         default: throw UnsupportedChainError.noWethAddress
         }
 

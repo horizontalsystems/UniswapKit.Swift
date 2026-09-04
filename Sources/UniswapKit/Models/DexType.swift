@@ -23,6 +23,8 @@ public enum DexType {
                 return try Address(hex: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD")
             case .zkSync:
                 return try Address(hex: "0x8FdA5a7a8dCA67BBcDd10F02Fa0649A937215422")
+            case .robinhood:
+                return try Address(hex: "0x1f7d7550b1b028f7571e69a784071f0205fd2efa")
             default:
                 throw AddressError.invalidFactoryAddress
             }
@@ -46,6 +48,8 @@ public enum DexType {
                 return try Address(hex: "0x88F1905197cCb1A94a1EA906F4e973bF6F2248dB")
             case .zkSync:
                 return try Address(hex: "0x8Cb537fc92E26d8EBBb760E632c95484b6Ea3e28")
+            case .robinhood:
+                return try Address(hex: "0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7")
             case .ethereumGoerli:
                 return try Address(hex: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e")
             default: throw AddressError.invalidQuoterAddress
@@ -70,13 +74,14 @@ public enum DexType {
                 return try Address(hex: "0x8f934fD34A92C1df0DbA4bEfAe7d16CCF255FeBD")
             case .zkSync:
                 return try Address(hex: "0x99c56385daBCE3E81d8499d0b8d0257aBC07E8A3")
+            case .robinhood:
+                return try Address(hex: "0xcaf681a66d020601342297493863e78c959e5cb2")
             case .ethereumGoerli:
                 return try Address(hex: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45")
             default:
                 throw AddressError.invalidRouterAddress
             }
         case .pancakeSwap:
-
             switch chain {
             case .base, .ethereum, .binanceSmartChain:
                 return try Address(hex: "0x2a114a012A75A267b80a8a3c5FB26B32E86c32bA")

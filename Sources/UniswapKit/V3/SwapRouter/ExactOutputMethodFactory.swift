@@ -11,16 +11,18 @@ class ExactOutputMethodFactory: IContractMethodFactory {
 
     func createMethod(inputArguments: Data) throws -> ContractMethod {
         let parsedArguments = ContractMethodHelper.decodeABI(inputArguments: inputArguments, argumentTypes: [
-            Data.self,
-            Address.self,
-            BigUInt.self,
-            BigUInt.self,
-            BigUInt.self,
+            ContractMethodHelper.DynamicStructParameter([
+                Data.self,
+                Address.self,
+                BigUInt.self,
+                BigUInt.self,
+            ]),
         ])
-        guard let path = parsedArguments[0] as? Data,
-              let recipient = parsedArguments[1] as? Address,
-              let amountOut = parsedArguments[2] as? BigUInt,
-              let amountInMaximum = parsedArguments[3] as? BigUInt
+        guard let structArguments = parsedArguments[0] as? [Any],
+              let path = structArguments[0] as? Data,
+              let recipient = structArguments[1] as? Address,
+              let amountOut = structArguments[2] as? BigUInt,
+              let amountInMaximum = structArguments[3] as? BigUInt
         else {
             throw ContractMethodFactories.DecodeError.invalidABI
         }
